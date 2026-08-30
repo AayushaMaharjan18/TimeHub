@@ -33,6 +33,8 @@ class DatabaseSeeder extends Seeder
         // Seed brands, categories, products, blogs, sliders, shipping, coupons
         $this->call([
             DemoDataSeeder::class,
+            ContentPageSeeder::class,
+            FaqSeeder::class,
         ]);
     }
 }

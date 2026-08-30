@@ -53,6 +53,21 @@ export default defineNuxtConfig({
   },
 
 
+  devServer: {
+    host: '127.0.0.1',
+    port: 3000,
+  },
+
+  vite: {
+    server: {
+      hmr: {
+        protocol: 'ws',
+        host: '127.0.0.1',
+        port: 24678,
+      },
+    },
+  },
+
   typescript: {
     strict: false,
     typeCheck: false,

@@ -719,6 +719,7 @@ class DemoDataSeeder extends Seeder
             ],
             'customer_service_links' => [
                 ['label' => 'Customer Service', 'url' => '/customer-service'],
+                ['label' => 'Track Order', 'url' => '/track-order'],
                 ['label' => 'FAQ', 'url' => '/faq'],
                 ['label' => 'Shipping Info', 'url' => '/shipping'],
                 ['label' => 'Returns & Exchanges', 'url' => '/returns'],
@@ -726,6 +727,7 @@ class DemoDataSeeder extends Seeder
                 ['label' => 'Terms & Conditions', 'url' => '/terms'],
             ],
             'phone' => '+977-1-4XXXXXX',
+            'whatsapp_number' => '+977-9800000000',
             'email' => 'info@watchstore.com.np',
             'address' => 'Kathmandu, Nepal',
             'copyright_text' => 'WatchStore Nepal. All rights reserved.',

@@ -93,7 +93,7 @@ class ReviewSubmissionTest extends TestCase
         ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('message', 'You can only leave a review after a completed purchase.');
+            ->assertJsonPath('message', 'You can only leave a review after successfully purchasing this product.');
 
         $this->assertDatabaseCount('reviews', 0);
     }
@@ -116,7 +116,7 @@ class ReviewSubmissionTest extends TestCase
             'rating' => 5,
             'title' => 'Loved it',
             'comment' => 'Excellent craftsmanship.',
-            'is_approved' => true,
+            'status' => Review::STATUS_APPROVED,
         ]);
 
         $response = $this->getJson('/api/v1/products/' . $product->id . '/reviews');

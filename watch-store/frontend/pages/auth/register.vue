@@ -107,7 +107,7 @@
                 I agree to the
                 <NuxtLink to="/terms" class="text-gold-500 hover:text-gold-600">Terms of Service</NuxtLink>
                 and
-                <NuxtLink to="/privacy" class="text-gold-500 hover:text-gold-600">Privacy Policy</NuxtLink>
+                <NuxtLink to="/privacy-policy" class="text-gold-500 hover:text-gold-600">Privacy Policy</NuxtLink>
               </span>
             </label>
           </div>

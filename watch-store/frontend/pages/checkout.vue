@@ -235,22 +235,6 @@ onMounted(() => {
   loadDistricts()
 })
 
-function loadKhaltiScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ((window as any).KhaltiCheckout || document.querySelector('script[data-khalti]')) {
-      resolve()
-      return
-    }
-    const script = document.createElement('script')
-    script.src = 'https://khalti.com/static/khalti-checkout.js'
-    script.async = true
-    script.setAttribute('data-khalti', 'true')
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Could not load Khalti.'))
-    document.head.appendChild(script)
-  })
-}
-
 async function loadDistricts() {
   try {
     const response = await api.get<any>('/v1/shipping/districts')
@@ -269,12 +253,11 @@ async function createOrder() {
     shipping_street: shippingForm.value.street,
     shipping_ward: '',
     payment_method: paymentMethod.value,
+    // Only product_id and quantity are trusted — the backend always
+    // re-derives price/name/total from the product record itself.
     items: cartStore.items.map(item => ({
       product_id: item.product_id,
-      product_name: item.product.name,
       quantity: item.quantity,
-      price: item.product.final_price,
-      total: item.product.final_price * item.quantity,
     }))
   }
   const response = await api.post<any>('/v1/orders', orderData)
@@ -296,10 +279,11 @@ async function placeOrder() {
       cartStore.clearCart()
       alert('Order placed successfully!')
       router.push('/account')
-    } else if (paymentMethod.value === 'khalti') {
-      await startKhaltiPayment(order)
-    } else if (paymentMethod.value === 'esewa') {
-      await startEsewaPayment(order)
+    } else {
+      // eSewa/Khalti: hand off to the gateway. The backend performs the
+      // actual payment verification on its own callback route once the
+      // gateway redirects back — this page never marks anything paid itself.
+      await startGatewayPayment(order, paymentMethod.value as 'esewa' | 'khalti')
     }
   } catch (error: any) {
     alert(error.message || 'Failed to place order. Please try again.')
@@ -308,70 +292,31 @@ async function placeOrder() {
   }
 }
 
-function startKhaltiPayment(order: any): Promise<void> {
-  return new Promise<void>(async (resolve, reject) => {
-    try {
-      await loadKhaltiScript()
-    } catch (e: any) {
-      reject(e)
-      return
-    }
-
-    const KhaltiCheckout = (window as any).KhaltiCheckout
-    const config = useRuntimeConfig()
-    const amount = Math.round(order.total * 100)
-    const khalti = new KhaltiCheckout({
-      publicKey: config.public.khaltiPublicKey,
-      productIdentity: String(order.id),
-      productName: `WatchStore Nepal Order ${order.order_number}`,
-      amount,
-      eventHandler: {
-        onSuccess: async (payload: any) => {
-          try {
-            await api.post('/v1/payments/khalti/verify', {
-              token: payload.token,
-              order_id: order.id,
-            })
-            cartStore.clearCart()
-            alert('Payment successful! Order placed.')
-            router.push('/account')
-            resolve()
-          } catch (e: any) {
-            alert(e.message || 'Payment verification failed.')
-            reject(e)
-          }
-        },
-        onError: (error: any) => {
-          alert(`Payment failed: ${error?.message || 'Please try again.'}`)
-          reject(error)
-        },
-        onClose: () => {
-          reject(new Error('Payment window was closed.'))
-        },
-      },
-    })
-    khalti.show({ amount })
-  })
-}
-
-async function startEsewaPayment(order: any) {
-  const origin = window.location.origin
-  const response = await api.post<any>('/v1/payments/esewa/init', {
+async function startGatewayPayment(order: any, provider: 'esewa' | 'khalti') {
+  const response = await api.post<any>('/v1/payments/initiate', {
     order_id: order.id,
-    success_url: `${origin}/payment/esewa?status=success`,
-    failure_url: `${origin}/payment/esewa?status=failure`,
+    provider,
   })
 
   const data = response.data
-  if (!data?.action || !data?.params) {
+
+  if (provider === 'khalti') {
+    if (!data?.payment_url) {
+      throw new Error('Khalti could not be initialized.')
+    }
+    window.location.href = data.payment_url
+    return
+  }
+
+  if (!data?.action || !data?.fields) {
     throw new Error('eSewa could not be initialized.')
   }
 
   // Build and submit a hidden form to the eSewa gateway.
   const form = document.createElement('form')
-  form.method = 'POST'
+  form.method = data.method || 'POST'
   form.action = data.action
-  Object.entries(data.params).forEach(([key, value]) => {
+  Object.entries(data.fields).forEach(([key, value]) => {
     const input = document.createElement('input')
     input.type = 'hidden'
     input.name = key

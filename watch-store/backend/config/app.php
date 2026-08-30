@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Base URL of the Nuxt storefront. Used to build the browser redirect
+    // target after a payment gateway callback finishes server-side verification.
+    'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

@@ -99,6 +99,11 @@ class FooterSettingForm
                             ->maxLength(255),
                         TextInput::make('address')
                             ->maxLength(255),
+                        TextInput::make('whatsapp_number')
+                            ->label('WhatsApp Number')
+                            ->tel()
+                            ->maxLength(255)
+                            ->helperText('Full international format, e.g. +977-98XXXXXXXX. Powers the WhatsApp contact/order-support buttons on the storefront.'),
                     ]),
 
                 Section::make('Additional Settings')

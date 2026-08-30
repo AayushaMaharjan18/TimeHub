@@ -7,6 +7,7 @@
     <AppFooter />
     <AppMobileNav />
     <BackToTop />
+    <WhatsAppFloatButton />
   </div>
 </template>
 
