@@ -8,9 +8,10 @@
       </div>
     </div>
 
+    <ClientOnly>
     <div v-if="!authStore.isAuthenticated" class="container mx-auto px-4 py-12 text-center">
       <p class="text-gray-500 mb-4">Please login to access your account</p>
-      <NuxtLink to="/auth/login" class="inline-block bg-luxury-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
+      <NuxtLink to="/auth/login?redirect=/account" class="inline-block bg-luxury-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
         Login
       </NuxtLink>
     </div>
@@ -255,6 +256,7 @@
                     <input
                       v-model="addressForm.full_name"
                       type="text"
+                      required
                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                     />
                   </div>
@@ -263,22 +265,30 @@
                     <input
                       v-model="addressForm.phone"
                       type="tel"
+                      required
+                      inputmode="numeric"
+                      pattern="[0-9]{10}"
+                      title="10-digit phone number"
                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">District</label>
-                    <input
+                    <select
                       v-model="addressForm.district"
-                      type="text"
+                      required
                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                    />
+                    >
+                      <option value="">Select district</option>
+                      <option v-for="d in districts" :key="d.id" :value="d.name">{{ d.name }}</option>
+                    </select>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Municipality</label>
                     <input
                       v-model="addressForm.municipality"
                       type="text"
+                      required
                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                     />
                   </div>
@@ -295,6 +305,7 @@
                     <input
                       v-model="addressForm.street"
                       type="text"
+                      required
                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                     />
                   </div>
@@ -302,9 +313,10 @@
                 <div class="flex gap-2 mt-4">
                   <button
                     type="submit"
-                    class="bg-luxury-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                    :disabled="savingAddress"
+                    class="bg-luxury-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
-                    Save
+                    {{ savingAddress ? 'Saving…' : 'Save' }}
                   </button>
                   <button
                     type="button"
@@ -328,18 +340,22 @@
               >
                 <div class="flex justify-between items-start">
                   <div>
-                    <h3 class="font-semibold">{{ address.label }}</h3>
+                    <h3 class="font-semibold">
+                      {{ address.label || 'Address' }}
+                      <span v-if="address.is_default" class="ml-2 text-xs bg-gold-50 text-gold-700 px-2 py-0.5 rounded-full">Default</span>
+                    </h3>
                     <p class="text-gray-600 mt-1">
                       {{ address.full_name }}<br>
                       {{ address.phone }}<br>
                       {{ address.street }}<br>
-                      {{ address.ward }}, {{ address.municipality }}<br>
+                      {{ address.municipality }}<span v-if="address.ward">, Ward {{ address.ward }}</span><br>
                       {{ address.district }}
                     </p>
                   </div>
                   <button
                     @click="deleteAddress(address.id)"
-                    class="text-red-500 hover:text-red-600"
+                    class="text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Delete address"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -352,6 +368,7 @@
         </main>
       </div>
     </div>
+    </ClientOnly>
   </div>
 </template>
 
@@ -361,14 +378,23 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '~/stores/auth'
 import { useApi } from '~/composables/useApi'
 import { useSiteSettings } from '~/composables/useSiteSettings'
-import type { Order, Address } from '~/types'
+import { useWishlistStore } from '~/stores/wishlist'
+import { useToast } from '~/composables/useToast'
+import type { Order, Address, ShippingDistrict } from '~/types'
+
+useSeoMeta({ title: 'My Account', robots: 'noindex' })
 
 const router = useRouter()
+const route = useRoute()
+const toast = useToast()
+const wishlistStore = useWishlistStore()
+const districts = ref<ShippingDistrict[]>([])
+const savingAddress = ref(false)
 const authStore = useAuthStore()
 const api = useApi()
 const { fetchSettings, buildWhatsAppLink } = useSiteSettings()
 
-const activeTab = ref('profile')
+const activeTab = ref(['profile', 'orders', 'addresses'].includes(route.query.tab as string) ? (route.query.tab as string) : 'profile')
 const loading = ref(false)
 const showAddressForm = ref(false)
 const profileMessage = ref('')
@@ -521,15 +547,22 @@ async function submitFeedback(productId?: number) {
 
 async function fetchAddresses() {
   try {
-    addresses.value = await api.get('/v1/user/addresses')
+    const [addr, dist] = await Promise.all([
+      api.get<{ data: Address[] }>('/v1/user/addresses'),
+      districts.value.length ? Promise.resolve({ data: districts.value }) : api.get<{ data: ShippingDistrict[] }>('/v1/shipping/districts'),
+    ])
+    addresses.value = addr.data || []
+    districts.value = dist.data || []
   } catch (error) {
     console.error('Failed to fetch addresses:', error)
   }
 }
 
 async function saveAddress() {
+  savingAddress.value = true
   try {
-    await api.post('/v1/user/addresses', addressForm.value)
+    await api.post('/v1/user/addresses', { ...addressForm.value, label: addressForm.value.label || 'Home' })
+    toast.success('Address saved')
     showAddressForm.value = false
     addressForm.value = {
       label: '',
@@ -541,22 +574,30 @@ async function saveAddress() {
       street: ''
     }
     fetchAddresses()
-  } catch (error) {
-    console.error('Failed to save address:', error)
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to save address')
+  } finally {
+    savingAddress.value = false
   }
 }
 
 async function deleteAddress(id: number) {
   try {
     await api.delete(`/v1/user/addresses/${id}`)
-    addresses.value = addresses.value.filter(a => a.id !== id)
-  } catch (error) {
-    console.error('Failed to delete address:', error)
+    // Refetch: deleting the default promotes another address server-side.
+    await fetchAddresses()
+    toast.success('Address deleted')
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to delete address')
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
+  try {
+    await api.post('/v1/auth/logout')
+  } catch {}
   authStore.logout()
+  wishlistStore.clear()
   router.push('/')
 }
 
@@ -568,7 +609,8 @@ function loadTabData() {
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
-    fetchProfile()
+    loadTabData()
+    if (activeTab.value !== 'profile') fetchProfile()
   }
   // Load site settings (WhatsApp number) so order-support buttons can render.
   fetchSettings()

@@ -5,22 +5,8 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-import { useCartStore } from '~/stores/cart'
-import { useWishlistStore } from '~/stores/wishlist'
-
-const authStore = useAuthStore()
-const cartStore = useCartStore()
-const wishlistStore = useWishlistStore()
-
-onMounted(() => {
-  authStore.loadFromStorage()
-  cartStore.setSessionId()
-  if (authStore.isAuthenticated) {
-    wishlistStore.load()
-  }
-})
-
+// Client state (auth, cart, wishlist) is restored in plugins/00.init.client.ts
+// so it is ready before any page's onMounted runs.
 useHead({
   titleTemplate: '%s | WatchStore Nepal',
   htmlAttrs: {

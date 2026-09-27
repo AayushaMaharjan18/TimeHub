@@ -22,14 +22,18 @@ class ProductController extends Controller
             });
         }
 
+        // brand / category accept ids or slugs, as an array or comma-separated list.
         if ($request->filled('brand')) {
-            $query->whereIn('brand_id', (array) $request->brand);
+            $brands = $this->listParam($request->brand);
+            $query->whereHas('brand', function ($q) use ($brands) {
+                $q->whereIn('brands.id', $brands)->orWhereIn('brands.slug', $brands);
+            });
         }
 
         if ($request->filled('category')) {
-            $categoryIds = (array) $request->category;
-            $query->whereHas('categories', function ($q) use ($categoryIds) {
-                $q->whereIn('categories.id', $categoryIds);
+            $categories = $this->listParam($request->category);
+            $query->whereHas('categories', function ($q) use ($categories) {
+                $q->whereIn('categories.id', $categories)->orWhereIn('categories.slug', $categories);
             });
         }
 
@@ -103,6 +107,14 @@ class ProductController extends Controller
                 'next' => $products->nextPageUrl(),
             ],
         ]);
+    }
+
+    /** @return array<int, string> */
+    private function listParam(mixed $value): array
+    {
+        $items = is_array($value) ? $value : explode(',', (string) $value);
+
+        return array_values(array_filter(array_map('trim', $items), fn ($v) => $v !== ''));
     }
 
     public function show(string $slug): JsonResponse

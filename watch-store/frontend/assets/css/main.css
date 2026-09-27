@@ -136,3 +136,73 @@
 ::selection {
   @apply bg-gold-500/30 text-luxury-black;
 }
+/* ---------------------------------------------------------------------------
+ * Scroll animations (plugins/animations.ts). Hidden only once JS has flagged
+ * <html class="js">, so content is never lost without JavaScript.
+ * ------------------------------------------------------------------------- */
+.js [data-reveal],
+.js [data-reveal-stagger] > * {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal],
+  .js [data-reveal-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Hero headline words are split into spans by anime.js */
+.hero-word {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* Gold underline that draws in on hover */
+.link-underline {
+  @apply relative;
+}
+.link-underline::after {
+  content: '';
+  @apply absolute left-0 -bottom-0.5 h-px w-full bg-current origin-right scale-x-0 transition-transform duration-500;
+}
+.link-underline:hover::after {
+  @apply origin-left scale-x-100;
+}
+
+/* Sheen that sweeps across gold buttons on hover */
+.btn-gold {
+  @apply relative overflow-hidden;
+}
+.btn-gold::before {
+  content: '';
+  @apply absolute inset-y-0 -left-full w-1/2 skew-x-[-20deg] bg-white/30 transition-all duration-700 pointer-events-none;
+}
+.btn-gold:hover::before {
+  @apply left-[150%];
+}
+
+/* Rich text from the admin panel's editor (blog posts, About page). */
+.rich-content {
+  @apply text-gray-700 leading-relaxed;
+}
+.rich-content h1,
+.rich-content h2,
+.rich-content h3 {
+  @apply font-display font-semibold text-luxury-black mt-8 mb-3;
+}
+.rich-content h1 { @apply text-3xl; }
+.rich-content h2 { @apply text-2xl; }
+.rich-content h3 { @apply text-xl; }
+.rich-content > :first-child { @apply mt-0; }
+.rich-content p { @apply mb-4; }
+.rich-content a { @apply text-gold-600 underline underline-offset-2 hover:text-gold-700; }
+.rich-content ul { @apply list-disc pl-6 mb-4 space-y-1; }
+.rich-content ol { @apply list-decimal pl-6 mb-4 space-y-1; }
+.rich-content blockquote { @apply border-l-4 border-gold-500 pl-4 italic text-gray-600 my-6; }
+.rich-content img { @apply rounded-xl my-6 max-w-full h-auto; }
+.rich-content strong { @apply text-luxury-black; }

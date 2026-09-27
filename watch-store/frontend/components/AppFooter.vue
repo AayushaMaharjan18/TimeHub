@@ -8,7 +8,7 @@
         <!-- Brand -->
         <div>
           <h3 class="text-2xl font-display font-bold mb-4">
-            <span class="text-white">WATCH</span><span class="text-gold-500">STORE</span>
+            <BrandWordmark :name="footer.brand_name" dark />
           </h3>
           <p class="text-gray-400 mb-4">{{ footer.brand_description }}</p>
           <div class="flex space-x-4">

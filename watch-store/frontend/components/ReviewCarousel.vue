@@ -22,8 +22,8 @@
   >
     <SwiperSlide v-for="review in reviews" :key="review.id">
       <div class="card-premium p-8 text-center h-full">
-        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 overflow-hidden">
-          <img :src="`https://picsum.photos/seed/review${review.id}/100/100`" alt="Customer" class="w-full h-full object-cover" />
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gold-50 text-gold-600 flex items-center justify-center font-display text-xl font-semibold">
+          {{ initials(review.user?.name) }}
         </div>
         <div class="flex justify-center gap-1 mb-4">
           <svg v-for="i in 5" :key="i" class="w-4 h-4" :class="i <= review.rating ? 'text-gold-500' : 'text-gray-200'" fill="currentColor" viewBox="0 0 20 20">
@@ -54,6 +54,10 @@ const api = useApi()
 
 const reviews = ref<Review[]>([])
 const loading = ref(true)
+
+function initials(name?: string | null): string {
+  return (name || 'Customer').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
 
 function formatDate(value: string): string {
   if (!value) return ''

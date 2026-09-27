@@ -33,6 +33,11 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap' },
       ],
+      // Flag JS support before first paint so scroll-reveal elements start
+      // hidden (see main.css) instead of flashing visible then animating.
+      script: [
+        { innerHTML: "document.documentElement.classList.add('js')", tagPosition: 'head' },
+      ],
     },
     pageTransition: { name: 'page', mode: 'out-in' },
     layoutTransition: { name: 'layout', mode: 'out-in' },
@@ -46,7 +51,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api',
+      // 127.0.0.1 rather than localhost: Node resolves localhost to ::1 first,
+      // while `php artisan serve` only listens on IPv4 — SSR fetches would fail.
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/api',
       siteUrl: 'https://watchstore.com.np',
       khaltiPublicKey: process.env.NUXT_PUBLIC_KHALTI_PUBLIC_KEY || 'test_public_key_dc74e0fd57cb46cd93832aee0a507256',
     },

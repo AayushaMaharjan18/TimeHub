@@ -178,18 +178,19 @@ export interface HeroSlider {
 
 export interface Offer {
   id: number
+  label: string | null
   title: string
-  subtitle: string
-  description: string
-  button_text: string
-  button_url: string
-  image: string
+  description: string | null
+  button_text: string | null
+  button_url: string | null
+  image: string | null
 }
 
 export interface ShippingDistrict {
-  district: string
+  id: number
+  name: string
   cost: number
-  estimated_days: number
+  delivery_days: string | null
 }
 
 
@@ -222,8 +223,8 @@ export interface PaginatedResponse<T> {
 
 export interface ProductFilters {
   search?: string
-  brand?: number | number[]
-  category?: number | number[]
+  brand?: string
+  category?: string
   gender?: string
   movement?: string
   strap?: string
@@ -232,6 +233,10 @@ export interface ProductFilters {
   min_price?: number
   max_price?: number
   in_stock?: boolean
+  is_featured?: boolean
+  is_new?: boolean
+  is_best_seller?: boolean
+  is_limited_edition?: boolean
   sort?: 'newest' | 'popular' | 'best_selling' | 'price_low' | 'price_high'
   per_page?: number
   page?: number

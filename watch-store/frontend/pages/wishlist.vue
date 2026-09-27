@@ -8,10 +8,11 @@
       </div>
     </div>
 
+    <ClientOnly>
     <div class="container mx-auto px-4 py-8">
       <div v-if="!authStore.isAuthenticated" class="text-center py-12">
         <p class="text-gray-500 mb-4">Please login to view your wishlist</p>
-        <NuxtLink to="/auth/login" class="inline-block bg-luxury-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
+        <NuxtLink to="/auth/login?redirect=/wishlist" class="inline-block bg-luxury-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
           Login
         </NuxtLink>
       </div>
@@ -81,6 +82,7 @@
         </div>
       </div>
     </div>
+    </ClientOnly>
   </div>
 </template>
 
@@ -90,8 +92,12 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '~/stores/auth'
 import { useCartStore } from '~/stores/cart'
 import { useWishlistStore } from '~/stores/wishlist'
+import { useToast } from '~/composables/useToast'
 import type { Product } from '~/types'
 
+useSeoMeta({ title: 'Wishlist', robots: 'noindex' })
+
+const toast = useToast()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const wishlistStore = useWishlistStore()
@@ -120,7 +126,9 @@ async function removeFromWishlist(productId: number) {
 }
 
 function addToCart(product: Product) {
-  cartStore.addItem(product, 1)
+  const added = cartStore.addItem(product, 1)
+  if (added > 0) toast.success(`${product.name} added to cart`, { label: 'View cart', to: '/cart' })
+  else toast.info(product.stock_quantity > 0 ? 'All available stock is already in your cart.' : 'This watch is out of stock.')
 }
 
 onMounted(() => {

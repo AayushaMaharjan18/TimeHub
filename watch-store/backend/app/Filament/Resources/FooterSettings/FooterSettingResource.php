@@ -22,7 +22,11 @@ class FooterSettingResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'brand_name';
 
-    protected static ?string $navigationLabel = 'Footer';
+    protected static ?string $navigationLabel = 'Site Settings';
+
+    protected static ?string $modelLabel = 'Site Settings';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
 
     public static function form(Schema $schema): Schema
     {

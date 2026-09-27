@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 
 interface StatusStep {
   status: string
@@ -118,8 +118,14 @@ interface TrackedOrder {
   items: { id: number; product_name: string; quantity: number; total: number }[]
 }
 
+useSeoMeta({ title: 'Track Your Order' })
+
 const api = useApi()
-const form = reactive({ order_number: '', phone: '' })
+const route = useRoute()
+const form = reactive({
+  order_number: typeof route.query.order === 'string' ? route.query.order : '',
+  phone: typeof route.query.phone === 'string' ? route.query.phone : '',
+})
 const order = ref<TrackedOrder | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -147,4 +153,9 @@ function formatDate(value: string) {
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
+
+// Arriving from the order confirmation page: look the order up straight away.
+onMounted(() => {
+  if (form.order_number && form.phone) track()
+})
 </script>

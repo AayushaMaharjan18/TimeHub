@@ -5,7 +5,9 @@
     </div>
 
     <div v-else-if="!product" class="container mx-auto px-4 py-24 text-center">
-      <p class="text-gray-500">Product not found</p>
+      <h1 class="text-3xl font-display font-bold mb-3">Watch not found</h1>
+      <p class="text-gray-500 mb-6">This product may have been removed or is no longer available.</p>
+      <NuxtLink to="/shop" class="btn-primary">Browse all watches</NuxtLink>
     </div>
 
     <div v-else class="container mx-auto px-4 py-8">
@@ -22,15 +24,23 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <!-- Product Images -->
-        <div class="space-y-4">
-          <div class="aspect-square bg-white rounded-lg overflow-hidden">
-            <img
-              :src="selectedImage || product.thumbnail"
-              :alt="product.name"
-              class="w-full h-full object-cover"
-            />
+        <div v-reveal="'left'" class="space-y-4">
+          <div
+            class="aspect-square bg-white rounded-2xl overflow-hidden shadow-premium cursor-zoom-in"
+            @mousemove="onZoomMove"
+            @mouseleave="zoomOrigin = null"
+          >
+            <Transition name="img-fade" mode="out-in">
+              <img
+                :key="selectedImage"
+                :src="selectedImage || product.thumbnail"
+                :alt="product.name"
+                class="w-full h-full object-cover transition-transform duration-300"
+                :style="zoomOrigin ? { transform: 'scale(1.8)', transformOrigin: zoomOrigin } : undefined"
+              />
+            </Transition>
           </div>
-          <div class="grid grid-cols-4 gap-2">
+          <div v-if="product.images?.length > 1" class="grid grid-cols-4 gap-2">
             <button
               v-for="(image, index) in product.images"
               :key="index"
@@ -46,9 +56,9 @@
         </div>
 
         <!-- Product Details -->
-        <div>
+        <div v-reveal="{ preset: 'right', delay: 100 }">
           <div v-if="product.brand" class="mb-2">
-            <NuxtLink :to="`/shop?brand=${product.brand.id}`" class="text-gold-500 hover:text-gold-600">
+            <NuxtLink :to="`/shop?brand=${product.brand.slug}`" class="text-gold-500 hover:text-gold-600 tracking-widest uppercase text-sm">
               {{ product.brand.name }}
             </NuxtLink>
           </div>
@@ -58,7 +68,7 @@
             <NuxtLink
               v-for="cat in product.categories"
               :key="cat.id"
-              :to="`/shop?category=${cat.id}`"
+              :to="`/shop?category=${cat.slug}`"
               class="px-3 py-1 bg-gray-100 hover:bg-gold-500 hover:text-white text-xs font-medium rounded-full text-gray-600 transition-colors"
             >
               {{ cat.name }}
@@ -73,18 +83,19 @@
               <span class="ml-1 text-gray-600">{{ product.average_rating.toFixed(1) }}</span>
               <span class="ml-1 text-gray-400">({{ product.reviews_count }} reviews)</span>
             </div>
-            <span v-if="product.in_stock" class="text-green-600">In Stock</span>
+            <span v-if="inStock && product.stock_quantity <= 5" class="text-amber-600">Only {{ product.stock_quantity }} left</span>
+            <span v-else-if="inStock" class="text-green-600">In Stock</span>
             <span v-else class="text-red-600">Out of Stock</span>
           </div>
 
           <div class="mb-6">
             <div class="flex items-center gap-3">
               <span class="text-3xl font-bold text-luxury-black">Rs. {{ product.final_price.toLocaleString() }}</span>
-              <span v-if="product.compare_price" class="text-xl text-gray-400 line-through">
+              <span v-if="product.compare_price && product.compare_price > product.final_price" class="text-xl text-gray-400 line-through">
                 Rs. {{ product.compare_price.toLocaleString() }}
               </span>
               <span v-if="product.discount_percentage > 0" class="bg-red-500 text-white px-2 py-1 rounded text-sm">
-                -{{ product.discount_percentage }}%
+                -{{ Math.round(product.discount_percentage) }}%
               </span>
             </div>
           </div>
@@ -92,12 +103,13 @@
           <p class="text-gray-600 mb-6">{{ product.short_description }}</p>
 
           <!-- Quantity Selector -->
-          <div class="mb-6">
+          <div v-if="inStock" class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
             <div class="flex items-center gap-2">
               <button
                 @click="quantity > 1 && quantity--"
                 class="w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-100"
+                aria-label="Decrease quantity"
               >
                 -
               </button>
@@ -106,11 +118,14 @@
                 type="number"
                 min="1"
                 :max="product.stock_quantity"
+                aria-label="Quantity"
                 class="w-20 h-10 text-center border border-gray-300 rounded-lg"
+                @change="quantity = Math.min(Math.max(1, Math.floor(quantity) || 1), product.stock_quantity)"
               />
               <button
                 @click="quantity < product.stock_quantity && quantity++"
                 class="w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-100"
+                aria-label="Increase quantity"
               >
                 +
               </button>
@@ -118,16 +133,24 @@
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex gap-4 mb-6">
+          <div class="flex flex-wrap gap-3 mb-6">
             <button
               @click="addToCart"
-              :disabled="!product.in_stock"
-              class="flex-1 bg-luxury-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="!inStock"
+              class="flex-1 min-w-[140px] bg-luxury-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add to Cart
+              {{ inStock ? 'Add to Cart' : 'Out of Stock' }}
+            </button>
+            <button
+              v-if="inStock"
+              @click="buyNow"
+              class="flex-1 min-w-[140px] btn-gold py-3"
+            >
+              Buy Now
             </button>
             <button
               @click="toggleWishlist"
+              :aria-label="wishlistStore.isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'"
               class="w-12 h-12 border border-gray-300 rounded-lg hover:bg-gray-100 flex items-center justify-center"
             >
               <svg class="w-6 h-6" :class="wishlistStore.isInWishlist(product.id) ? 'text-red-500' : 'text-gray-400'" fill="currentColor" viewBox="0 0 24 24">
@@ -335,6 +358,7 @@ import { useSiteSettings } from '~/composables/useSiteSettings'
 import { useCartStore } from '~/stores/cart'
 import { useAuthStore } from '~/stores/auth'
 import { useWishlistStore } from '~/stores/wishlist'
+import { useToast } from '~/composables/useToast'
 
 const route = useRoute()
 const api = useApi()
@@ -342,6 +366,7 @@ const cartStore = useCartStore()
 const authStore = useAuthStore()
 const wishlistStore = useWishlistStore()
 const { fetchSettings, buildWhatsAppLink, currentUrl } = useSiteSettings()
+const toast = useToast()
 
 const product = ref<Product | null>(null)
 const loading = ref(true)
@@ -349,6 +374,20 @@ const selectedImage = ref('')
 const quantity = ref(1)
 const reviews = ref<Review[]>([])
 const relatedProducts = ref<Product[]>([])
+const zoomOrigin = ref<string | null>(null)
+
+const inStock = computed(() => !!product.value && product.value.in_stock && product.value.stock_quantity > 0)
+
+function onZoomMove(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  zoomOrigin.value = `${((e.clientX - rect.left) / rect.width) * 100}% ${((e.clientY - rect.top) / rect.height) * 100}%`
+}
+
+useSeoMeta({
+  title: () => product.value?.meta_title || product.value?.name || 'Watch',
+  description: () => product.value?.meta_description || product.value?.short_description || '',
+  ogImage: () => product.value?.thumbnail || undefined,
+})
 
 // WhatsApp enquiry link built from the product details and the WhatsApp number
 // configured in the website settings. Null when no number is configured.
@@ -376,176 +415,6 @@ const reviewMessageType = ref<'success' | 'error'>('success')
 const editingReviewId = ref<number | null>(null)
 const showReviewForm = ref(false)
 
-// Local fallback data so the detail page still renders without a running API,
-// consistent with the homepage and shop pages.
-const sampleProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Rolex Submariner Date',
-    slug: 'rolex-submariner-date',
-    description: '<p>The iconic diver\u2019s watch with Cerachrom bezel and Chromalight display.</p>',
-    short_description: 'Iconic diving watch with 41mm case and automatic movement.',
-    sku: 'RLX-126610LN',
-    price: 450000,
-    compare_price: 480000,
-    final_price: 450000,
-    discount_percentage: 6,
-    stock_quantity: 5,
-    in_stock: true,
-    is_featured: true,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'men',
-    movement: 'Automatic',
-    strap: 'Oystersteel',
-    case_material: 'Oystersteel',
-    case_diameter: '41mm',
-    case_thickness: '12.5mm',
-    water_resistance: '300m',
-    dial_color: 'Black',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '5 years',
-    average_rating: 4.8,
-    reviews_count: 112,
-    brand: { id: 1, name: 'Rolex', slug: 'rolex', description: '', logo: '', is_featured: true, products_count: 42 },
-    categories: [
-      { id: 1, name: 'Luxury Watches', slug: 'luxury-watches', description: '', image: '', parent_id: null, parent: null, children: [], products_count: 40, sort_order: 1 },
-      { id: 3, name: 'Diving Watches', slug: 'diving-watches', description: '', image: '', parent_id: null, parent: null, children: [], products_count: 12, sort_order: 3 },
-    ],
-    images: ['https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-01',
-    updated_at: '2024-01-01'
-  },
-  {
-    id: 2,
-    name: 'Omega Speedmaster Professional',
-    slug: 'omega-speedmaster-professional',
-    description: '<p>The legendary Moonwatch that has been part of all six moon landings.</p>',
-    short_description: 'Iconic chronograph with Hesalite crystal and manual movement.',
-    sku: 'OMG-31130423001006',
-    price: 380000,
-    compare_price: null,
-    final_price: 380000,
-    discount_percentage: 0,
-    stock_quantity: 8,
-    in_stock: true,
-    is_featured: true,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'men',
-    movement: 'Manual',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '42mm',
-    case_thickness: '13.8mm',
-    water_resistance: '50m',
-    dial_color: 'Black',
-    glass_type: 'Hesalite Crystal',
-    warranty_period: '3 years',
-    average_rating: 4.9,
-    reviews_count: 89,
-    brand: { id: 2, name: 'Omega', slug: 'omega', description: '', logo: '', is_featured: true, products_count: 38 },
-    categories: [
-      { id: 1, name: 'Luxury Watches', slug: 'luxury-watches', description: '', image: '', parent_id: null, parent: null, children: [], products_count: 40, sort_order: 1 },
-    ],
-    images: ['https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-02',
-    updated_at: '2024-01-02'
-  },
-  {
-    id: 3,
-    name: 'Nepal Time Himalayan Classic',
-    slug: 'nepal-time-himalayan-classic',
-    description: '<p>Proudly Nepali timepiece inspired by the majestic Himalayas.</p>',
-    short_description: 'Handcrafted watch with traditional Nepali motifs and Swiss movement.',
-    sku: 'NT-HC-001',
-    price: 25000,
-    compare_price: 30000,
-    final_price: 25000,
-    discount_percentage: 17,
-    stock_quantity: 20,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '40mm',
-    case_thickness: '10mm',
-    water_resistance: '50m',
-    dial_color: 'White',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.5,
-    reviews_count: 23,
-    brand: { id: 9, name: 'Nepal Time', slug: 'nepal-time', description: '', logo: '', is_featured: true, products_count: 15 },
-    categories: [
-      { id: 5, name: 'New Arrivals', slug: 'new-arrivals', description: '', image: '', parent_id: null, parent: null, children: [], products_count: 18, sort_order: 5 },
-    ],
-    images: ['https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-10',
-    updated_at: '2024-01-10'
-  },
-  {
-    id: 4,
-    name: 'Kathmandu Heritage Edition',
-    slug: 'kathmandu-heritage-edition',
-    description: '<p>Elegant timepiece celebrating Kathmandu\u2019s rich cultural heritage.</p>',
-    short_description: 'Limited edition watch with traditional Nepali artistry.',
-    sku: 'KW-HE-002',
-    price: 35000,
-    compare_price: null,
-    final_price: 35000,
-    discount_percentage: 0,
-    stock_quantity: 10,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: true,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Brass',
-    case_diameter: '39mm',
-    case_thickness: '9.5mm',
-    water_resistance: '30m',
-    dial_color: 'Gold',
-    glass_type: 'Mineral Glass',
-    warranty_period: '2 years',
-    average_rating: 4.7,
-    reviews_count: 41,
-    brand: { id: 10, name: 'Kathmandu Watches', slug: 'kathmandu-watches', description: '', logo: '', is_featured: true, products_count: 12 },
-    categories: [
-      { id: 4, name: 'Limited Edition', slug: 'limited-edition', description: '', image: '', parent_id: null, parent: null, children: [], products_count: 6, sort_order: 4 },
-    ],
-    images: ['https://images.unsplash.com/photo-1612817159949-195b6eb9e31a?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1612817159949-195b6eb9e31a?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-15',
-    updated_at: '2024-01-15'
-  },
-]
-
 async function fetchProduct() {
   loading.value = true
   const slug = route.params.slug as string
@@ -553,21 +422,18 @@ async function fetchProduct() {
     const response = await api.get<{ data: Product }>(`/v1/products/${slug}`)
     product.value = response.data
   } catch (error) {
-    // Fall back to local sample data so the page still renders without the API.
-    console.warn('API unavailable, using sample product data:', error)
-    product.value = sampleProducts.find((p) => p.slug === slug) || null
-  }
-
-  if (product.value) {
-    selectedImage.value = product.value.thumbnail
-    await fetchReviews()
-    await fetchRelatedProducts()
-    if (authStore.isAuthenticated) {
-      await wishlistStore.load()
-      await fetchEligibility()
-    }
+    product.value = null
   }
   loading.value = false
+
+  if (product.value) {
+    selectedImage.value = product.value.thumbnail || product.value.images?.[0] || ''
+    await Promise.all([
+      fetchReviews(),
+      fetchRelatedProducts(),
+      authStore.isAuthenticated ? fetchEligibility() : Promise.resolve(),
+    ])
+  }
 }
 
 async function fetchReviews() {
@@ -719,28 +585,34 @@ function reviewStatusBadge(status?: string): string {
 async function fetchRelatedProducts() {
   try {
     if (!product.value) return
-    relatedProducts.value = await api.get<Product[]>(`/v1/products/${product.value.id}/related`)
+    const response = await api.get<{ data: Product[] }>(`/v1/products/${product.value.id}/related`)
+    relatedProducts.value = response.data || []
   } catch (error) {
-    // Fall back to other sample products when the API is unavailable.
-    console.warn('API unavailable, using sample related products:', error)
-    if (product.value) {
-      relatedProducts.value = sampleProducts.filter((p) => p.id !== product.value?.id).slice(0, 4)
-    }
+    relatedProducts.value = []
   }
 }
 
 function addToCart() {
   if (!product.value) return
-  if (!authStore.isAuthenticated) {
-    navigateTo('/auth/login?redirect=/shop')
-    return
+  // Guests can build a cart; login is only required at checkout.
+  const added = cartStore.addItem(product.value, quantity.value)
+  if (added > 0) {
+    toast.success(`${added} × ${product.value.name} added to cart`, { label: 'View cart', to: '/cart' })
+  } else {
+    toast.info(`Only ${product.value.stock_quantity} in stock — all are already in your cart.`)
   }
-  cartStore.addItem(product.value, quantity.value)
+}
+
+async function buyNow() {
+  if (!product.value) return
+  if (cartStore.quantityOf(product.value.id) === 0) cartStore.addItem(product.value, quantity.value)
+  navigateTo(authStore.isAuthenticated ? '/checkout' : '/auth/login?redirect=/checkout')
 }
 
 async function toggleWishlist() {
   if (!authStore.isAuthenticated) {
-    navigateTo('/auth/login')
+    toast.info('Please sign in to save items to your wishlist.')
+    navigateTo(`/auth/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
   if (!product.value) return
@@ -748,7 +620,7 @@ async function toggleWishlist() {
   try {
     await wishlistStore.toggle(product.value)
   } catch (error) {
-    console.error('Failed to update wishlist:', error)
+    toast.error('Could not update your wishlist. Please try again.')
   }
 }
 
@@ -782,3 +654,14 @@ onMounted(() => {
   fetchSettings()
 })
 </script>
+
+<style scoped>
+.img-fade-enter-active,
+.img-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.img-fade-enter-from,
+.img-fade-leave-to {
+  opacity: 0;
+}
+</style>

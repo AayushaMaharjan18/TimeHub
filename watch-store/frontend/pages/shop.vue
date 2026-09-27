@@ -1,33 +1,55 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <div class="container mx-auto px-4 py-8">
+    <!-- Page header -->
+    <div class="bg-luxury-black text-white py-14 relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full border border-gold-500/20" />
+      <div v-reveal class="container-premium relative">
+        <p class="text-gold-500 text-xs tracking-[0.3em] uppercase mb-2">{{ activeBrand ? 'Brand' : 'Shop' }}</p>
+        <h1 class="text-4xl md:text-5xl font-display font-bold">{{ pageTitle }}</h1>
+        <p v-if="activeBrand?.description" class="text-gray-400 mt-3 max-w-2xl">{{ activeBrand.description }}</p>
+      </div>
+    </div>
+
+    <div class="container-premium py-8">
+      <!-- Mobile filter toggle -->
+      <button class="lg:hidden mb-4 w-full btn-outline py-2" @click="filtersOpen = !filtersOpen">
+        {{ filtersOpen ? 'Hide filters' : 'Show filters' }}
+        <span v-if="activeFilterCount" class="ml-2 bg-gold-500 text-white text-xs rounded-full px-2 py-0.5">{{ activeFilterCount }}</span>
+      </button>
+
       <div class="flex flex-col lg:flex-row gap-8">
-        <!-- Filters Sidebar -->
-        <aside class="lg:w-64 flex-shrink-0">
-          <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-            <div class="flex items-center justify-between mb-6">
+        <!-- Filters -->
+        <aside class="lg:w-64 flex-shrink-0" :class="{ 'hidden lg:block': !filtersOpen }">
+          <form class="bg-white rounded-2xl shadow-premium p-6 lg:sticky lg:top-20 space-y-5" @submit.prevent="applyFilters">
+            <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold">Filters</h2>
-              <button @click="clearFilters" class="text-sm text-gold-500 hover:text-gold-600">Clear All</button>
+              <button type="button" class="text-sm text-gold-600 hover:text-gold-700" @click="clearFilters">Clear all</button>
             </div>
 
-            <!-- Search -->
-            <div class="mb-6">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-              <input
-                v-model="filters.search"
-                type="text"
-                placeholder="Search products..."
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-              />
+            <div>
+              <label class="filter-label" for="f-search">Search</label>
+              <input id="f-search" v-model="form.search" type="search" placeholder="Search watches…" class="filter-input" />
             </div>
 
-            <!-- Gender -->
-            <div class="mb-6">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-              <select
-                v-model="filters.gender"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-              >
+            <div>
+              <label class="filter-label" for="f-brand">Brand</label>
+              <select id="f-brand" v-model="form.brand" class="filter-input">
+                <option value="">All brands</option>
+                <option v-for="b in brands" :key="b.id" :value="b.slug">{{ b.name }}</option>
+              </select>
+            </div>
+
+            <div v-if="categories.length">
+              <label class="filter-label" for="f-category">Category</label>
+              <select id="f-category" v-model="form.category" class="filter-input">
+                <option value="">All categories</option>
+                <option v-for="c in categories" :key="c.id" :value="c.slug">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="filter-label" for="f-gender">Gender</label>
+              <select id="f-gender" v-model="form.gender" class="filter-input">
                 <option value="">All</option>
                 <option value="men">Men</option>
                 <option value="women">Women</option>
@@ -35,707 +57,228 @@
               </select>
             </div>
 
-            <!-- Price Range -->
-            <div class="mb-6">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+            <div>
+              <span class="filter-label">Price range (Rs.)</span>
               <div class="flex gap-2">
-                <input
-                  v-model="filters.min_price"
-                  type="number"
-                  placeholder="Min"
-                  class="w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                />
-                <input
-                  v-model="filters.max_price"
-                  type="number"
-                  placeholder="Max"
-                  class="w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                />
+                <input v-model="form.min_price" type="number" min="0" placeholder="Min" aria-label="Minimum price" class="filter-input" />
+                <input v-model="form.max_price" type="number" min="0" placeholder="Max" aria-label="Maximum price" class="filter-input" />
               </div>
             </div>
 
-            <!-- Sort -->
-            <div class="mb-6">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-              <select
-                v-model="filters.sort"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-              >
-                <option value="newest">Newest</option>
-                <option value="popular">Popular</option>
-                <option value="best_selling">Best Selling</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-              </select>
+            <div class="space-y-2">
+              <label v-for="flag in flagOptions" :key="flag.key" class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input v-model="form[flag.key]" type="checkbox" class="rounded text-gold-500 focus:ring-gold-500" />
+                {{ flag.label }}
+              </label>
             </div>
 
-            <button
-              @click="applyFilters"
-              class="w-full bg-luxury-black text-white py-2 rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              Apply Filters
-            </button>
-          </div>
+            <button type="submit" class="w-full btn-primary py-2.5">Apply filters</button>
+          </form>
         </aside>
 
-        <!-- Products Grid -->
-        <main class="flex-1">
-          <div class="flex items-center justify-between mb-6">
-            <p class="text-gray-600">{{ pagination.total }} products found</p>
-            <select
-              v-model="filters.per_page"
-              @change="applyFilters"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+        <!-- Results -->
+        <section class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <p class="text-gray-600">
+              <span v-if="!pending">{{ meta.total }} {{ meta.total === 1 ? 'watch' : 'watches' }}</span>
+              <span v-else>Loading…</span>
+            </p>
+            <div class="flex items-center gap-2">
+              <label for="f-sort" class="text-sm text-gray-500">Sort</label>
+              <select id="f-sort" :value="query.sort" class="filter-input !w-auto" @change="setQuery({ sort: ($event.target as HTMLSelectElement).value, page: undefined })">
+                <option value="newest">Newest</option>
+                <option value="popular">Most popular</option>
+                <option value="price_low">Price: low to high</option>
+                <option value="price_high">Price: high to low</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Active filter chips -->
+          <div v-if="chips.length" class="flex flex-wrap gap-2 mb-6">
+            <button
+              v-for="chip in chips"
+              :key="chip.key"
+              class="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1 text-sm hover:border-gold-500 transition-colors"
+              @click="setQuery({ [chip.key]: undefined, page: undefined })"
             >
-              <option :value="12">12 per page</option>
-              <option :value="24">24 per page</option>
-              <option :value="48">48 per page</option>
-            </select>
+              {{ chip.label }} <span class="text-gray-400">✕</span>
+            </button>
           </div>
 
-          <div v-if="loading" class="flex justify-center py-12">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+          <div v-if="pending" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div v-for="i in 6" :key="i">
+              <div class="aspect-square skeleton-shimmer" />
+              <div class="h-4 w-1/3 skeleton-shimmer mt-4" />
+              <div class="h-4 w-2/3 skeleton-shimmer mt-2" />
+            </div>
           </div>
 
-          <div v-else-if="products.length === 0" class="text-center py-12">
-            <p class="text-gray-500">No products found</p>
+          <div v-else-if="error" class="text-center py-16 bg-white rounded-2xl">
+            <p class="text-gray-500 mb-4">We couldn't load products right now.</p>
+            <button class="btn-outline text-sm" @click="refresh()">Try again</button>
           </div>
 
-          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ProductCard
-              v-for="product in products"
-              :key="product.id"
-              :product="product"
-            />
+          <div v-else-if="products.length === 0" class="text-center py-16 bg-white rounded-2xl">
+            <p class="text-gray-500 mb-4">No watches match these filters.</p>
+            <button class="btn-outline text-sm" @click="clearFilters">Clear filters</button>
+          </div>
+
+          <div v-else :key="resultsKey" v-reveal-stagger="{ stagger: 60 }" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <ProductCard v-for="product in products" :key="product.id" :product="product" fluid />
           </div>
 
           <!-- Pagination -->
-          <div v-if="pagination.last_page > 1" class="flex justify-center mt-8 gap-2">
+          <nav v-if="meta.last_page > 1" class="flex justify-center items-center mt-10 gap-2" aria-label="Pagination">
+            <button class="page-btn" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">‹</button>
             <button
-              v-for="page in pagination.last_page"
+              v-for="page in meta.last_page"
               :key="page"
+              class="page-btn"
+              :class="{ '!bg-luxury-black !text-white': meta.current_page === page }"
+              :aria-current="meta.current_page === page ? 'page' : undefined"
               @click="goToPage(page)"
-              :class="[
-                'px-4 py-2 rounded-lg',
-                pagination.current_page === page
-                  ? 'bg-luxury-black text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              ]"
             >
               {{ page }}
             </button>
-          </div>
-        </main>
+            <button class="page-btn" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">›</button>
+          </nav>
+        </section>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { Product, ProductFilters, PaginatedResponse } from '~/types'
-import ProductCard from '~/components/ProductCard.vue'
-import { useAuthStore } from '~/stores/auth'
-import { useWishlistStore } from '~/stores/wishlist'
+import { computed, reactive, ref, watch } from 'vue'
+import type { Brand, Category, Product, PaginatedResponse } from '~/types'
+import { useApi } from '~/composables/useApi'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
-const wishlistStore = useWishlistStore()
+const api = useApi()
 
-const products = ref<Product[]>([])
-const loading = ref(false)
-const pagination = ref({
-  current_page: 1,
-  last_page: 1,
-  total: 0
-})
-
-const filters = ref<ProductFilters>({
-  search: '',
-  gender: '',
-  min_price: undefined,
-  max_price: undefined,
-  sort: 'newest',
-  per_page: 12,
-  page: 1
-})
-
-const sampleProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Rolex Submariner Date',
-    slug: 'rolex-submariner-date',
-    description: 'The iconic diver\'s watch with Cerachrom bezel and Chromalight display.',
-    short_description: 'Iconic diving watch with 41mm case and automatic movement.',
-    sku: 'RLX-126610LN',
-    price: 450000,
-    compare_price: 480000,
-    final_price: 450000,
-    discount_percentage: 6,
-    stock_quantity: 5,
-    in_stock: true,
-    is_featured: true,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'men',
-    movement: 'Automatic',
-    strap: 'Oystersteel',
-    case_material: 'Oystersteel',
-    case_diameter: '41mm',
-    case_thickness: '12.5mm',
-    water_resistance: '300m',
-    dial_color: 'Black',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '5 years',
-    average_rating: 4.8,
-    reviews_count: 124,
-    brand: { id: 1, name: 'Rolex', slug: 'rolex', description: '', logo: '', is_featured: true, products_count: 45 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-01',
-    updated_at: '2024-01-01'
-  },
-  {
-    id: 2,
-    name: 'Omega Speedmaster Professional',
-    slug: 'omega-speedmaster-professional',
-    description: 'The legendary Moonwatch that has been part of all six moon landings.',
-    short_description: 'Iconic chronograph with Hesalite crystal and manual movement.',
-    sku: 'OMG-31130423001006',
-    price: 380000,
-    compare_price: null,
-    final_price: 380000,
-    discount_percentage: 0,
-    stock_quantity: 8,
-    in_stock: true,
-    is_featured: true,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'men',
-    movement: 'Manual',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '42mm',
-    case_thickness: '13.8mm',
-    water_resistance: '50m',
-    dial_color: 'Black',
-    glass_type: 'Hesalite Crystal',
-    warranty_period: '3 years',
-    average_rating: 4.9,
-    reviews_count: 89,
-    brand: { id: 2, name: 'Omega', slug: 'omega', description: '', logo: '', is_featured: true, products_count: 38 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-02',
-    updated_at: '2024-01-02'
-  },
-  {
-    id: 3,
-    name: 'Nepal Time Himalayan Classic',
-    slug: 'nepal-time-himalayan-classic',
-    description: 'Proudly Nepali timepiece inspired by the majestic Himalayas.',
-    short_description: 'Handcrafted watch with traditional Nepali motifs and Swiss movement.',
-    sku: 'NT-HC-001',
-    price: 25000,
-    compare_price: 30000,
-    final_price: 25000,
-    discount_percentage: 17,
-    stock_quantity: 20,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '40mm',
-    case_thickness: '10mm',
-    water_resistance: '50m',
-    dial_color: 'White',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.5,
-    reviews_count: 23,
-    brand: { id: 9, name: 'Nepal Time', slug: 'nepal-time', description: '', logo: '', is_featured: true, products_count: 15 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-10',
-    updated_at: '2024-01-10'
-  },
-  {
-    id: 4,
-    name: 'Kathmandu Heritage Edition',
-    slug: 'kathmandu-heritage-edition',
-    description: 'Elegant timepiece celebrating Kathmandu\'s rich cultural heritage.',
-    short_description: 'Limited edition watch with traditional Nepali artistry.',
-    sku: 'KW-HE-002',
-    price: 35000,
-    compare_price: null,
-    final_price: 35000,
-    discount_percentage: 0,
-    stock_quantity: 10,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: true,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '38mm',
-    case_thickness: '9mm',
-    water_resistance: '30m',
-    dial_color: 'Blue',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '3 years',
-    average_rating: 4.7,
-    reviews_count: 15,
-    brand: { id: 10, name: 'Kathmandu Watches', slug: 'kathmandu-watches', description: '', logo: '', is_featured: true, products_count: 12 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-08',
-    updated_at: '2024-01-08'
-  },
-  {
-    id: 5,
-    name: 'Tag Heuer Carrera',
-    slug: 'tag-heuer-carrera',
-    description: 'Inspired by motor racing, the Carrera is a symbol of speed and precision.',
-    short_description: 'Sporty chronograph with tachymeter bezel.',
-    sku: 'TH-CAR-011',
-    price: 185000,
-    compare_price: 200000,
-    final_price: 185000,
-    discount_percentage: 8,
-    stock_quantity: 12,
-    in_stock: true,
-    is_featured: true,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'men',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '44mm',
-    case_thickness: '13mm',
-    water_resistance: '100m',
-    dial_color: 'Black',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.6,
-    reviews_count: 67,
-    brand: { id: 3, name: 'Tag Heuer', slug: 'tag-heuer', description: '', logo: '', is_featured: true, products_count: 32 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1548171915-e79a380a2a4b?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1548171915-e79a380a2a4b?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-05',
-    updated_at: '2024-01-05'
-  },
-  {
-    id: 6,
-    name: 'Seiko Prospex Diver',
-    slug: 'seiko-prospex-diver',
-    description: 'Professional diving watch with exceptional water resistance.',
-    short_description: '200m diver with automatic movement and LumiBrite dial.',
-    sku: 'SKX-007',
-    price: 45000,
-    compare_price: 50000,
-    final_price: 45000,
-    discount_percentage: 10,
-    stock_quantity: 25,
-    in_stock: true,
-    is_featured: false,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'men',
-    movement: 'Automatic',
-    strap: 'Rubber',
-    case_material: 'Stainless Steel',
-    case_diameter: '42mm',
-    case_thickness: '13mm',
-    water_resistance: '200m',
-    dial_color: 'Black',
-    glass_type: 'Hardlex Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.4,
-    reviews_count: 156,
-    brand: { id: 4, name: 'Seiko', slug: 'seiko', description: '', logo: '', is_featured: true, products_count: 56 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1612817159949-195b6eb9e31a?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1612817159949-195b6eb9e31a?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-03',
-    updated_at: '2024-01-03'
-  },
-  {
-    id: 7,
-    name: 'Himalayan Horology Everest Edition',
-    slug: 'himlayan-horology-everest-edition',
-    description: 'Limited edition timepiece inspired by the world\'s highest peak.',
-    short_description: 'Luxury watch with mountain-inspired design and Swiss movement.',
-    sku: 'HH-EV-001',
-    price: 85000,
-    compare_price: 100000,
-    final_price: 85000,
-    discount_percentage: 15,
-    stock_quantity: 5,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: true,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Titanium',
-    case_diameter: '42mm',
-    case_thickness: '11mm',
-    water_resistance: '100m',
-    dial_color: 'Silver',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '5 years',
-    average_rating: 4.9,
-    reviews_count: 8,
-    brand: { id: 11, name: 'Himalayan Horology', slug: 'himlayan-horology', description: '', logo: '', is_featured: false, products_count: 8 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-12',
-    updated_at: '2024-01-12'
-  },
-  {
-    id: 8,
-    name: 'Citizen Eco-Drive',
-    slug: 'citizen-eco-drive',
-    description: 'Solar-powered watch that never needs a battery replacement.',
-    short_description: 'Eco-Drive technology with perpetual calendar.',
-    sku: 'CTZ-ED-001',
-    price: 28000,
-    compare_price: 32000,
-    final_price: 28000,
-    discount_percentage: 13,
-    stock_quantity: 30,
-    in_stock: true,
-    is_featured: false,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Solar',
-    strap: 'Stainless Steel',
-    case_material: 'Stainless Steel',
-    case_diameter: '40mm',
-    case_thickness: '9mm',
-    water_resistance: '100m',
-    dial_color: 'Blue',
-    glass_type: 'Mineral Crystal',
-    warranty_period: '5 years',
-    average_rating: 4.3,
-    reviews_count: 92,
-    brand: { id: 5, name: 'Citizen', slug: 'citizen', description: '', logo: '', is_featured: false, products_count: 42 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-04',
-    updated_at: '2024-01-04'
-  },
-  {
-    id: 9,
-    name: 'Casio G-Shock',
-    slug: 'casio-g-shock',
-    description: 'Virtually indestructible watch with shock resistance.',
-    short_description: '200m water resistance with digital and analog display.',
-    sku: 'GS-GA-2100',
-    price: 15000,
-    compare_price: 18000,
-    final_price: 15000,
-    discount_percentage: 17,
-    stock_quantity: 50,
-    in_stock: true,
-    is_featured: false,
-    is_new: false,
-    is_best_seller: true,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Quartz',
-    strap: 'Resin',
-    case_material: 'Resin',
-    case_diameter: '45mm',
-    case_thickness: '11mm',
-    water_resistance: '200m',
-    dial_color: 'Black',
-    glass_type: 'Mineral Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.5,
-    reviews_count: 234,
-    brand: { id: 6, name: 'Casio', slug: 'casio', description: '', logo: '', is_featured: false, products_count: 67 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-06',
-    updated_at: '2024-01-06'
-  },
-  {
-    id: 10,
-    name: 'Tissot PRX',
-    slug: 'tissot-prx',
-    description: 'Modern reinterpretation of the 1978 classic.',
-    short_description: 'Integrated bracelet with automatic movement.',
-    sku: 'TS-PRX-001',
-    price: 55000,
-    compare_price: 60000,
-    final_price: 55000,
-    discount_percentage: 8,
-    stock_quantity: 18,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Automatic',
-    strap: 'Stainless Steel',
-    case_material: 'Stainless Steel',
-    case_diameter: '40mm',
-    case_thickness: '10mm',
-    water_resistance: '100m',
-    dial_color: 'Silver',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.6,
-    reviews_count: 45,
-    brand: { id: 8, name: 'Tissot', slug: 'tissot', description: '', logo: '', is_featured: true, products_count: 39 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-09',
-    updated_at: '2024-01-09'
-  },
-  {
-    id: 11,
-    name: 'Everest Timepieces Summit',
-    slug: 'everest-timepieces-summit',
-    description: 'Luxury timepiece representing the pinnacle of Nepali watchmaking.',
-    short_description: 'Gold-plated watch with Swiss automatic movement.',
-    sku: 'ET-SUM-001',
-    price: 120000,
-    compare_price: 150000,
-    final_price: 120000,
-    discount_percentage: 20,
-    stock_quantity: 3,
-    in_stock: true,
-    is_featured: true,
-    is_new: true,
-    is_best_seller: false,
-    is_limited_edition: true,
-    status: 'active',
-    gender: 'men',
-    movement: 'Automatic',
-    strap: 'Leather',
-    case_material: 'Gold Plated',
-    case_diameter: '40mm',
-    case_thickness: '10mm',
-    water_resistance: '50m',
-    dial_color: 'White',
-    glass_type: 'Sapphire Crystal',
-    warranty_period: '5 years',
-    average_rating: 5.0,
-    reviews_count: 5,
-    brand: { id: 12, name: 'Everest Timepieces', slug: 'everest-timepieces', description: '', logo: '', is_featured: false, products_count: 6 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1548171915-e79a380a2a4b?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1548171915-e79a380a2a4b?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-11',
-    updated_at: '2024-01-11'
-  },
-  {
-    id: 12,
-    name: 'Fossil Minimalist',
-    slug: 'fossil-minimalist',
-    description: 'Clean and simple design for everyday elegance.',
-    short_description: 'Minimalist watch with leather strap.',
-    sku: 'FS-MIN-001',
-    price: 12000,
-    compare_price: 15000,
-    final_price: 12000,
-    discount_percentage: 20,
-    stock_quantity: 40,
-    in_stock: true,
-    is_featured: false,
-    is_new: false,
-    is_best_seller: false,
-    is_limited_edition: false,
-    status: 'active',
-    gender: 'unisex',
-    movement: 'Quartz',
-    strap: 'Leather',
-    case_material: 'Stainless Steel',
-    case_diameter: '36mm',
-    case_thickness: '8mm',
-    water_resistance: '30m',
-    dial_color: 'White',
-    glass_type: 'Mineral Crystal',
-    warranty_period: '2 years',
-    average_rating: 4.2,
-    reviews_count: 78,
-    brand: { id: 7, name: 'Fossil', slug: 'fossil', description: '', logo: '', is_featured: false, products_count: 51 },
-    categories: [],
-    images: ['https://images.unsplash.com/photo-1612817159949-195b6eb9e31a?w=800'],
-    thumbnail: 'https://images.unsplash.com/photo-1612817159949-195b6eb9e31a?w=400',
-    meta_title: null,
-    meta_description: null,
-    created_at: '2024-01-07',
-    updated_at: '2024-01-07'
-  }
+type FlagKey = 'in_stock' | 'is_new' | 'is_featured' | 'is_best_seller' | 'is_limited_edition'
+const flagOptions: { key: FlagKey; label: string }[] = [
+  { key: 'in_stock', label: 'In stock only' },
+  { key: 'is_new', label: 'New arrivals' },
+  { key: 'is_featured', label: 'Featured' },
+  { key: 'is_best_seller', label: 'Best sellers' },
+  { key: 'is_limited_edition', label: 'Limited edition' },
 ]
+const TEXT_KEYS = ['search', 'brand', 'category', 'gender', 'min_price', 'max_price'] as const
 
-function fetchProducts() {
-  loading.value = true
-  setTimeout(() => {
-    let filteredProducts = sampleProducts
-    
-    // Filter by brand
-    if (filters.value.brand) {
-      const brandId = filters.value.brand
-      filteredProducts = filteredProducts.filter(p => p.brand?.id === brandId)
-    }
-    
-    // Filter by gender
-    if (filters.value.gender) {
-      filteredProducts = filteredProducts.filter(p => p.gender === filters.value.gender)
-    }
-    
-    // Filter by search
-    if (filters.value.search) {
-      const searchLower = filters.value.search.toLowerCase()
-      filteredProducts = filteredProducts.filter(p => 
-        p.name.toLowerCase().includes(searchLower) ||
-        p.description.toLowerCase().includes(searchLower)
-      )
-    }
-    
-    // Filter by price range
-    if (filters.value.min_price) {
-      filteredProducts = filteredProducts.filter(p => p.final_price >= filters.value.min_price!)
-    }
-    if (filters.value.max_price) {
-      filteredProducts = filteredProducts.filter(p => p.final_price <= filters.value.max_price!)
-    }
-    
-    products.value = filteredProducts
-    pagination.value = {
-      current_page: 1,
-      last_page: 1,
-      total: filteredProducts.length
-    }
-    loading.value = false
-  }, 500)
+// The URL is the single source of truth, so header search, brand links and
+// "View All" links (/shop?is_new=1, /shop?brand=rolex …) all just work.
+const query = computed(() => {
+  const q = route.query
+  const str = (k: string) => (typeof q[k] === 'string' ? (q[k] as string) : '')
+  return {
+    search: str('search'),
+    brand: str('brand'),
+    category: str('category'),
+    gender: str('gender'),
+    min_price: str('min_price'),
+    max_price: str('max_price'),
+    sort: str('sort') || 'newest',
+    page: Number(str('page')) || 1,
+    in_stock: str('in_stock') === '1',
+    is_new: str('is_new') === '1',
+    is_featured: str('is_featured') === '1',
+    is_best_seller: str('is_best_seller') === '1',
+    is_limited_edition: str('is_limited_edition') === '1',
+  }
+})
+
+const apiParams = computed(() => {
+  const p: Record<string, string> = { per_page: '12', sort: query.value.sort, page: String(query.value.page) }
+  for (const k of TEXT_KEYS) if (query.value[k]) p[k] = query.value[k]
+  for (const f of flagOptions) if (query.value[f.key]) p[f.key] = '1'
+  return p
+})
+
+const { data, pending, error, refresh } = await useAsyncData(
+  'shop-products',
+  () => api.get<PaginatedResponse<Product>>('/v1/products', apiParams.value),
+  { watch: [apiParams] },
+)
+const products = computed(() => data.value?.data ?? [])
+const meta = computed(() => data.value?.meta ?? { current_page: 1, last_page: 1, total: 0 })
+const resultsKey = computed(() => JSON.stringify(apiParams.value))
+
+const { data: brandData } = await useAsyncData('shop-brands', () => api.get<{ data: Brand[] }>('/v1/brands'))
+const { data: categoryData } = await useAsyncData('shop-categories', () => api.get<{ data: Category[] }>('/v1/categories'))
+const brands = computed(() => brandData.value?.data ?? [])
+const categories = computed(() => categoryData.value?.data ?? [])
+
+const activeBrand = computed(() => brands.value.find(b => b.slug === query.value.brand || String(b.id) === query.value.brand))
+const activeCategory = computed(() => categories.value.find(c => c.slug === query.value.category || String(c.id) === query.value.category))
+
+const pageTitle = computed(() => {
+  if (activeBrand.value) return activeBrand.value.name
+  if (query.value.search) return `Results for “${query.value.search}”`
+  if (activeCategory.value) return activeCategory.value.name
+  if (query.value.is_new) return 'New Arrivals'
+  if (query.value.is_limited_edition) return 'Limited Edition'
+  if (query.value.is_best_seller) return 'Best Sellers'
+  if (query.value.is_featured) return 'Featured Collection'
+  return 'All Watches'
+})
+
+useSeoMeta({ title: () => pageTitle.value })
+
+// ---- Filter form (edits a draft; Apply writes it to the URL) ---------------
+const filtersOpen = ref(false)
+const form = reactive({ ...query.value })
+watch(query, (q) => Object.assign(form, q))
+
+const chips = computed(() => {
+  const list: { key: string; label: string }[] = []
+  if (query.value.search) list.push({ key: 'search', label: `“${query.value.search}”` })
+  if (query.value.brand) list.push({ key: 'brand', label: activeBrand.value?.name ?? query.value.brand })
+  if (query.value.category) list.push({ key: 'category', label: activeCategory.value?.name ?? query.value.category })
+  if (query.value.gender) list.push({ key: 'gender', label: query.value.gender[0].toUpperCase() + query.value.gender.slice(1) })
+  if (query.value.min_price) list.push({ key: 'min_price', label: `From Rs. ${Number(query.value.min_price).toLocaleString()}` })
+  if (query.value.max_price) list.push({ key: 'max_price', label: `Up to Rs. ${Number(query.value.max_price).toLocaleString()}` })
+  for (const f of flagOptions) if (query.value[f.key]) list.push({ key: f.key, label: f.label })
+  return list
+})
+const activeFilterCount = computed(() => chips.value.length)
+
+function setQuery(patch: Record<string, string | number | undefined>) {
+  const next: Record<string, string> = {}
+  for (const [k, v] of Object.entries({ ...route.query, ...patch })) {
+    if (v !== undefined && v !== null && v !== '' && v !== 'newest' && !(k === 'page' && Number(v) === 1)) next[k] = String(v)
+  }
+  router.push({ query: next })
 }
 
 function applyFilters() {
-  filters.value.page = 1
-  fetchProducts()
-  updateURL()
+  const patch: Record<string, string | undefined> = { page: undefined }
+  for (const k of TEXT_KEYS) patch[k] = String(form[k] ?? '').trim() || undefined
+  for (const f of flagOptions) patch[f.key] = form[f.key] ? '1' : undefined
+  setQuery(patch)
+  filtersOpen.value = false
 }
 
 function clearFilters() {
-  filters.value = {
-    search: '',
-    gender: '',
-    min_price: undefined,
-    max_price: undefined,
-    sort: 'newest',
-    per_page: 12,
-    page: 1
-  }
-  fetchProducts()
-  updateURL()
+  router.push({ query: {} })
 }
 
 function goToPage(page: number) {
-  filters.value.page = page
-  fetchProducts()
-  updateURL()
+  setQuery({ page })
+  if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
 }
-
-function updateURL() {
-  const query: any = { ...filters.value }
-  Object.keys(query).forEach(key => {
-    if (query[key] === undefined || query[key] === '') {
-      delete query[key]
-    }
-    if (key === 'in_stock' && query[key] === true) {
-      query[key] = '1'
-    }
-  })
-  router.push({ query })
-}
-
-function loadFiltersFromURL() {
-  if (route.query.search) filters.value.search = route.query.search as string
-  if (route.query.gender) filters.value.gender = route.query.gender as string
-  if (route.query.brand) {
-    const brandId = Number(route.query.brand)
-    if (!isNaN(brandId)) {
-      filters.value.brand = brandId
-    }
-  }
-  if (route.query.min_price) filters.value.min_price = Number(route.query.min_price)
-  if (route.query.max_price) filters.value.max_price = Number(route.query.max_price)
-  if (route.query.sort) filters.value.sort = route.query.sort as any
-  if (route.query.per_page) filters.value.per_page = Number(route.query.per_page)
-  if (route.query.page) filters.value.page = Number(route.query.page)
-}
-
-onMounted(() => {
-  loadFiltersFromURL()
-  fetchProducts()
-  if (authStore.isAuthenticated) {
-    wishlistStore.load()
-  }
-})
 </script>
+
+<style scoped>
+.filter-label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+.filter-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-transparent;
+}
+.page-btn {
+  @apply min-w-[2.5rem] h-10 px-3 rounded-lg bg-white text-gray-700 shadow-sm hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+}
+</style>
