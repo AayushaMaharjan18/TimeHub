@@ -10,7 +10,22 @@ class Review extends Model
     public const STATUS_APPROVED = 'approved';
     public const STATUS_REJECTED = 'rejected';
 
-    protected $guarded = [];
+    // Explicit allow-list rather than $guarded = []: a stray key in a save
+    // payload (e.g. a Filament form field bound to a relation name) is
+    // silently dropped instead of Eloquent trying to write it as a real
+    // column and failing with a SQL error — see ReviewAdminEditTest.
+    protected $fillable = [
+        'product_id',
+        'user_id',
+        'order_id',
+        'rating',
+        'title',
+        'comment',
+        'status',
+        'is_approved',
+        'is_visible_on_homepage',
+        'is_verified_purchase',
+    ];
 
     protected $casts = [
         'rating' => 'integer',
