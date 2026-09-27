@@ -7,15 +7,8 @@
       :navigation="true"
       :pagination="{ clickable: true }"
       :autoplay="{ delay: 4000, disableOnInteraction: true, pauseOnMouseEnter: true }"
-      :loop="products.length > 4"
-      :breakpoints="{
-        320: { slidesPerView: 1.2, spaceBetween: 16 },
-        375: { slidesPerView: 1.5, spaceBetween: 16 },
-        640: { slidesPerView: 2, spaceBetween: 20 },
-        768: { slidesPerView: 3, spaceBetween: 24 },
-        1024: { slidesPerView: 4, spaceBetween: 24 },
-        1280: { slidesPerView: 5, spaceBetween: 24 },
-      }"
+      :rewind="true"
+      :grab-cursor="true"
       class="product-carousel"
     >
       <SwiperSlide v-for="product in products" :key="product.id" class="!w-auto">

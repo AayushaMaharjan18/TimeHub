@@ -1,12 +1,16 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AddressController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\BrandController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\ContentPageController;
 use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\FooterController;
 use App\Http\Controllers\Api\V1\HomepageController;
+use App\Http\Controllers\Api\V1\NewsletterController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -40,8 +44,17 @@ Route::prefix('v1')->group(function () {
     Route::get('brands/featured', [BrandController::class, 'featured']);
     Route::get('brands/{slug}', [BrandController::class, 'show']);
 
-    // Footer
+    // Site settings (footer, contact details, newsletter copy, About page)
     Route::get('footer', [FooterController::class, 'index']);
+    Route::get('settings', [FooterController::class, 'index']);
+
+    // Blog
+    Route::get('blogs', [BlogController::class, 'index']);
+    Route::get('blogs/{slug}', [BlogController::class, 'show']);
+
+    // Contact form + newsletter (throttled: unauthenticated writes)
+    Route::post('contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
+    Route::post('newsletter', [NewsletterController::class, 'subscribe'])->middleware('throttle:10,1');
 
     // Shipping
     Route::get('shipping/districts', [ShippingController::class, 'districts']);
@@ -83,6 +96,10 @@ Route::prefix('v1')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('user/profile', [AuthController::class, 'profile']);
         Route::put('user/profile', [AuthController::class, 'updateProfile']);
+        Route::get('user/addresses', [AddressController::class, 'index']);
+        Route::post('user/addresses', [AddressController::class, 'store']);
+        Route::put('user/addresses/{address}', [AddressController::class, 'update']);
+        Route::delete('user/addresses/{address}', [AddressController::class, 'destroy']);
         Route::get('orders', [OrderController::class, 'index']);
         Route::post('orders', [OrderController::class, 'store']);
         Route::get('orders/{order}', [OrderController::class, 'show']);

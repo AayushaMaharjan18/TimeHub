@@ -1,122 +1,104 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Story Section -->
-    <div class="container mx-auto px-4 py-16">
+    <!-- All content here is edited in Admin → Settings → Site Settings → About Page -->
+    <div class="bg-luxury-black text-white py-16 text-center relative overflow-hidden">
+      <div class="absolute -right-24 -top-24 w-80 h-80 rounded-full border border-gold-500/20" />
+      <div v-reveal class="container-premium relative">
+        <p class="text-gold-500 text-xs tracking-[0.3em] uppercase mb-2">About Us</p>
+        <h1 class="text-4xl md:text-5xl font-display font-bold">{{ settings?.brand_name ? `About ${prettyName}` : 'About Us' }}</h1>
+      </div>
+    </div>
+
+    <!-- Story -->
+    <section v-if="about.content || about.image" class="container-premium py-16">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <div>
-          <h2 class="text-3xl font-serif mb-6">Our Story</h2>
-          <p class="text-gray-600 mb-4">
-            Founded in 2015, WatchStore Nepal has been the premier destination for luxury watch enthusiasts across the country. What started as a small passion project has grown into Nepal's most trusted retailer of authentic timepieces.
-          </p>
-          <p class="text-gray-600 mb-4">
-            We believe that a watch is more than just a timekeeping device – it's a statement of style, a piece of engineering art, and often a cherished heirloom. That's why we're committed to offering only genuine, certified watches from the world's most prestigious brands.
-          </p>
-          <p class="text-gray-600">
-            Our team of watch experts shares your passion for horology and is dedicated to helping you find the perfect timepiece that matches your style and budget.
-          </p>
+        <div v-reveal="'left'">
+          <h2 class="text-3xl font-display font-bold mb-6">{{ about.title || 'Our Story' }}</h2>
+          <div class="rich-content" v-html="about.content" />
         </div>
-        <div class="aspect-video bg-gray-200 rounded-lg overflow-hidden">
-          <img src="https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800" alt="Our Store" class="w-full h-full object-cover" />
+        <div v-if="about.image" v-reveal="{ preset: 'right', delay: 150 }" class="aspect-video rounded-2xl overflow-hidden shadow-premium-xl">
+          <img :src="about.image" alt="" class="w-full h-full object-cover hover:scale-105 transition-transform duration-1000" />
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Values Section -->
-    <div class="bg-white py-16">
-      <div class="container mx-auto px-4">
-        <h2 class="text-3xl font-serif text-center mb-12">Our Values</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="text-center p-6">
-            <div class="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+    <!-- Values -->
+    <section v-if="about.values.length" class="bg-white py-16">
+      <div class="container-premium">
+        <h2 v-reveal class="text-3xl font-display font-bold text-center mb-12">Our Values</h2>
+        <div v-reveal-stagger class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div v-for="(value, i) in about.values" :key="i" class="text-center p-8 rounded-2xl hover:bg-gray-50 transition-colors">
+            <div class="w-16 h-16 bg-gold-50 text-gold-600 rounded-full flex items-center justify-center mx-auto mb-4 font-display text-2xl font-bold">
+              {{ String(i + 1).padStart(2, '0') }}
             </div>
-            <h3 class="text-xl font-semibold mb-2">Authenticity Guaranteed</h3>
-            <p class="text-gray-600">Every watch we sell is 100% authentic and comes with manufacturer warranty and certification.</p>
-          </div>
-          <div class="text-center p-6">
-            <div class="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold mb-2">Expert Service</h3>
-            <p class="text-gray-600">Our certified watchmakers provide professional maintenance and repair services.</p>
-          </div>
-          <div class="text-center p-6">
-            <div class="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold mb-2">Customer First</h3>
-            <p class="text-gray-600">Your satisfaction is our priority. We offer personalized service and support.</p>
+            <h3 class="text-xl font-semibold mb-2">{{ value.title }}</h3>
+            <p v-if="value.description" class="text-gray-600">{{ value.description }}</p>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Stats Section -->
-    <div class="bg-luxury-black text-white py-16">
-      <div class="container mx-auto px-4">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <div>
-            <div class="text-4xl font-bold text-gold-500 mb-2">50+</div>
-            <div class="text-gray-400">Premium Brands</div>
-          </div>
-          <div>
-            <div class="text-4xl font-bold text-gold-500 mb-2">10,000+</div>
-            <div class="text-gray-400">Happy Customers</div>
-          </div>
-          <div>
-            <div class="text-4xl font-bold text-gold-500 mb-2">8 Years</div>
-            <div class="text-gray-400">In Business</div>
-          </div>
-          <div>
-            <div class="text-4xl font-bold text-gold-500 mb-2">100%</div>
-            <div class="text-gray-400">Authentic</div>
-          </div>
+    <!-- Stats -->
+    <section v-if="about.stats.length" class="bg-luxury-black text-white py-16">
+      <div v-reveal-stagger class="container-premium grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div v-for="(stat, i) in about.stats" :key="i">
+          <div v-count-up class="text-4xl md:text-5xl font-display font-bold text-gold-500 mb-2">{{ stat.value }}</div>
+          <div class="text-gray-400">{{ stat.label }}</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Team Section -->
-    <div class="container mx-auto px-4 py-16">
-      <h2 class="text-3xl font-serif text-center mb-12">Meet Our Team</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div class="aspect-square bg-gray-200">
-            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400" alt="CEO" class="w-full h-full object-cover" />
+    <!-- Team -->
+    <section v-if="about.team.length" class="container-premium py-16">
+      <h2 v-reveal class="text-3xl font-display font-bold text-center mb-12">Meet Our Team</h2>
+      <div v-reveal-stagger class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+        <div v-for="(member, i) in about.team" :key="i" class="bg-white rounded-2xl shadow-premium overflow-hidden group">
+          <div class="aspect-square bg-gray-100 overflow-hidden">
+            <img v-if="member.photo" :src="member.photo" :alt="member.name" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+            <div v-else class="w-full h-full flex items-center justify-center font-display text-5xl text-gray-300">{{ member.name?.[0] }}</div>
           </div>
           <div class="p-6 text-center">
-            <h3 class="font-semibold text-lg">Rajesh Sharma</h3>
-            <p class="text-gray-500">Founder & CEO</p>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div class="aspect-square bg-gray-200">
-            <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400" alt="Manager" class="w-full h-full object-cover" />
-          </div>
-          <div class="p-6 text-center">
-            <h3 class="font-semibold text-lg">Priya Thapa</h3>
-            <p class="text-gray-500">Store Manager</p>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div class="aspect-square bg-gray-200">
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400" alt="Watchmaker" class="w-full h-full object-cover" />
-          </div>
-          <div class="p-6 text-center">
-            <h3 class="font-semibold text-lg">Bikash Gurung</h3>
-            <p class="text-gray-500">Master Watchmaker</p>
+            <h3 class="font-semibold text-lg">{{ member.name }}</h3>
+            <p v-if="member.role" class="text-gray-500">{{ member.role }}</p>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <section class="container-premium pb-16 text-center">
+      <div v-reveal class="bg-white rounded-3xl shadow-premium p-10">
+        <h2 class="text-2xl md:text-3xl font-display font-bold mb-3">Find your next timepiece</h2>
+        <p class="text-gray-500 mb-6">Browse the full collection or talk to our team.</p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <NuxtLink to="/shop" class="btn-gold">Shop watches</NuxtLink>
+          <NuxtLink to="/contact" class="btn-outline">Contact us</NuxtLink>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-// No additional script needed for static content
+import { computed } from 'vue'
+import { useApi } from '~/composables/useApi'
+import type { SiteFooterData } from '~/composables/useSiteSettings'
+
+useSeoMeta({ title: 'About Us' })
+
+const api = useApi()
+const { data: settings } = await useAsyncData('site-settings', () => api.get<SiteFooterData>('/v1/settings'))
+
+const about = computed(() => ({
+  title: settings.value?.about?.title ?? null,
+  content: settings.value?.about?.content ?? null,
+  image: settings.value?.about?.image ?? null,
+  values: settings.value?.about?.values ?? [],
+  stats: settings.value?.about?.stats ?? [],
+  team: settings.value?.about?.team ?? [],
+}))
+
+const prettyName = computed(() => {
+  const name = settings.value?.brand_name || ''
+  return name === name.toUpperCase() ? name.charAt(0) + name.slice(1).toLowerCase().replace(/store$/, 'Store') : name
+})
 </script>

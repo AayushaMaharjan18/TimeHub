@@ -8,6 +8,10 @@
       </div>
     </div>
 
+    <ClientOnly>
+    <template #fallback>
+      <div class="flex justify-center py-24"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gold-500" /></div>
+    </template>
     <div class="container mx-auto px-4 py-8">
       <div v-if="cartStore.isEmpty" class="text-center py-12">
         <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -23,65 +27,74 @@
         <!-- Checkout Form -->
         <div class="lg:col-span-2 space-y-6">
           <!-- Shipping Address -->
-          <div class="bg-white rounded-lg shadow-sm p-6">
+          <div v-reveal class="bg-white rounded-2xl shadow-premium p-6">
             <h2 class="text-xl font-semibold mb-4">Shipping Address</h2>
-            <form @submit.prevent="placeOrder">
+
+            <!-- Saved addresses -->
+            <div v-if="savedAddresses.length" class="grid sm:grid-cols-2 gap-3 mb-6">
+              <button
+                v-for="addr in savedAddresses"
+                :key="addr.id"
+                type="button"
+                class="text-left p-4 border rounded-xl transition-all"
+                :class="selectedAddressId === addr.id ? 'border-gold-500 bg-gold-500/5 ring-1 ring-gold-500' : 'border-gray-200 hover:border-gray-400'"
+                @click="useAddress(addr)"
+              >
+                <p class="font-medium text-sm">{{ addr.label || 'Address' }} <span v-if="addr.is_default" class="text-xs text-gold-600">· Default</span></p>
+                <p class="text-sm text-gray-600">{{ addr.full_name }} · {{ addr.phone }}</p>
+                <p class="text-sm text-gray-500">{{ addr.street }}, {{ addr.municipality }}<span v-if="addr.ward">-{{ addr.ward }}</span>, {{ addr.district }}</p>
+              </button>
+              <button
+                type="button"
+                class="p-4 border border-dashed rounded-xl text-sm text-gray-500 hover:border-gold-500 hover:text-gold-600 transition-colors"
+                :class="{ 'border-gold-500 text-gold-600': selectedAddressId === null }"
+                @click="useNewAddress"
+              >
+                + Use a new address
+              </button>
+            </div>
+
+            <form id="checkout-form" @submit.prevent="placeOrder">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                  <input
-                    v-model="shippingForm.full_name"
-                    type="text"
-                    required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  />
+                  <label class="checkout-label" for="c-name">Full Name</label>
+                  <input id="c-name" v-model="shippingForm.full_name" type="text" required class="checkout-input" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                  <input
-                    v-model="shippingForm.phone"
-                    type="tel"
-                    required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  />
+                  <label class="checkout-label" for="c-phone">Phone Number</label>
+                  <input id="c-phone" v-model="shippingForm.phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" title="10-digit phone number" required class="checkout-input" />
                 </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">District</label>
-                  <select
-                    v-model="shippingForm.district"
-                    required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  >
-                    <option value="">Select District</option>
-                    <option v-for="district in districts" :key="district" :value="district">
-                      {{ district }}
+                <div>
+                  <label class="checkout-label" for="c-district">District</label>
+                  <select id="c-district" v-model="shippingForm.district" required class="checkout-input">
+                    <option value="">Select district</option>
+                    <option v-for="district in districts" :key="district.id" :value="district.name">
+                      {{ district.name }} — Rs. {{ district.cost.toLocaleString() }}{{ district.delivery_days ? ` (${district.delivery_days})` : '' }}
                     </option>
                   </select>
                 </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Municipality</label>
-                  <input
-                    v-model="shippingForm.municipality"
-                    type="text"
-                    required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  />
+                <div>
+                  <label class="checkout-label" for="c-municipality">Municipality</label>
+                  <input id="c-municipality" v-model="shippingForm.municipality" type="text" required class="checkout-input" />
                 </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
-                  <textarea
-                    v-model="shippingForm.street"
-                    rows="3"
-                    required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  ></textarea>
+                <div>
+                  <label class="checkout-label" for="c-ward">Ward No. <span class="text-gray-400 font-normal">(optional)</span></label>
+                  <input id="c-ward" v-model="shippingForm.ward" type="text" class="checkout-input" />
+                </div>
+                <div>
+                  <label class="checkout-label" for="c-street">Street / Landmark</label>
+                  <input id="c-street" v-model="shippingForm.street" type="text" required class="checkout-input" />
                 </div>
               </div>
+              <label v-if="selectedAddressId === null" class="flex items-center gap-2 mt-4 text-sm text-gray-600">
+                <input v-model="saveAddress" type="checkbox" class="rounded text-gold-500 focus:ring-gold-500" />
+                Save this address to my account
+              </label>
             </form>
           </div>
 
           <!-- Payment Method -->
-          <div class="bg-white rounded-lg shadow-sm p-6">
+          <div v-reveal="{ delay: 100 }" class="bg-white rounded-2xl shadow-premium p-6">
             <h2 class="text-xl font-semibold mb-4">Payment Method</h2>
             <div class="space-y-3">
               <label
@@ -111,7 +124,7 @@
 
         <!-- Order Summary -->
         <div class="lg:col-span-1">
-          <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
+          <div v-reveal="{ preset: 'right', delay: 150 }" class="bg-white rounded-2xl shadow-premium p-6 sticky top-20">
             <h2 class="text-xl font-semibold mb-6">Order Summary</h2>
 
             <!-- Cart Items -->
@@ -140,23 +153,21 @@
         
               <div class="flex justify-between">
                 <span class="text-gray-600">Shipping</span>
-                <span class="font-medium">Calculated later</span>
+                <span class="font-medium">{{ selectedDistrict ? `Rs. ${shippingCost.toLocaleString()}` : 'Select district' }}</span>
               </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Tax</span>
-                <span class="font-medium">Calculated later</span>
-              </div>
+              <p v-if="selectedDistrict?.delivery_days" class="text-xs text-gray-400 -mt-2">Estimated delivery: {{ selectedDistrict.delivery_days }}</p>
             </div>
 
             <div class="border-t pt-4 mb-6">
               <div class="flex justify-between text-lg font-semibold">
                 <span>Total</span>
-                <span>Rs. {{ cartStore.subtotal.toLocaleString() }}</span>
+                <span>Rs. {{ total.toLocaleString() }}</span>
               </div>
             </div>
 
             <button
-              @click="placeOrder"
+              type="submit"
+              form="checkout-form"
               :disabled="isPlacingOrder"
               class="w-full bg-luxury-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
@@ -166,33 +177,46 @@
         </div>
       </div>
     </div>
+    </ClientOnly>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCartStore } from '~/stores/cart'
 import { useAuthStore } from '~/stores/auth'
 import { useApi } from '~/composables/useApi'
+import { useToast } from '~/composables/useToast'
+import type { Address, ShippingDistrict } from '~/types'
 
-const route = useRoute()
+useSeoMeta({ title: 'Checkout' })
+
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const api = useApi()
+const toast = useToast()
 
 const shippingForm = ref({
   full_name: '',
   phone: '',
   district: '',
   municipality: '',
-  street: ''
+  ward: '',
+  street: '',
 })
 
 const paymentMethod = ref('cod')
 const isPlacingOrder = ref(false)
-const districts = ref<string[]>([])
+const districts = ref<ShippingDistrict[]>([])
+const savedAddresses = ref<Address[]>([])
+const selectedAddressId = ref<number | null>(null)
+const saveAddress = ref(true)
+
+const selectedDistrict = computed(() => districts.value.find(d => d.name === shippingForm.value.district))
+const shippingCost = computed(() => selectedDistrict.value?.cost ?? 0)
+const total = computed(() => cartStore.subtotal + shippingCost.value)
 
 const paymentMethods = [
   {
@@ -219,48 +243,80 @@ const paymentMethods = [
 ]
 
 onMounted(() => {
-  // Redirect to login if not authenticated
   if (!authStore.isAuthenticated) {
-    router.push('/auth/login?redirect=/checkout')
+    router.replace('/auth/login?redirect=/checkout')
     return
   }
 
-  // Pre-fill user data
   if (authStore.user) {
     shippingForm.value.full_name = authStore.user.name
     shippingForm.value.phone = authStore.user.phone
   }
 
-  // Load districts
   loadDistricts()
+  loadAddresses()
 })
 
 async function loadDistricts() {
   try {
-    const response = await api.get<any>('/v1/shipping/districts')
-    districts.value = (response.data || []).map((d: any) => d.name)
-  } catch (error) {
-    console.error('Failed to load districts:', error)
+    const response = await api.get<{ data: ShippingDistrict[] }>('/v1/shipping/districts')
+    districts.value = response.data || []
+  } catch {
+    toast.error('Could not load delivery districts. Please refresh the page.')
+  }
+}
+
+async function loadAddresses() {
+  try {
+    const response = await api.get<{ data: Address[] }>('/v1/user/addresses')
+    savedAddresses.value = response.data || []
+    const preferred = savedAddresses.value.find(a => a.is_default) ?? savedAddresses.value[0]
+    if (preferred) useAddress(preferred)
+  } catch {
+    // Saved addresses are a convenience; the form still works without them.
+  }
+}
+
+function useAddress(addr: Address) {
+  selectedAddressId.value = addr.id
+  shippingForm.value = {
+    full_name: addr.full_name,
+    phone: addr.phone,
+    district: addr.district,
+    municipality: addr.municipality,
+    ward: addr.ward || '',
+    street: addr.street,
+  }
+}
+
+function useNewAddress() {
+  selectedAddressId.value = null
+  shippingForm.value = {
+    full_name: authStore.user?.name ?? '',
+    phone: authStore.user?.phone ?? '',
+    district: '',
+    municipality: '',
+    ward: '',
+    street: '',
   }
 }
 
 async function createOrder() {
-  const orderData = {
+  const response = await api.post<any>('/v1/orders', {
     shipping_name: shippingForm.value.full_name,
-    shipping_phone: shippingForm.value.phone,
+    shipping_phone: shippingForm.value.phone.trim(),
     shipping_district: shippingForm.value.district,
     shipping_municipality: shippingForm.value.municipality,
     shipping_street: shippingForm.value.street,
-    shipping_ward: '',
+    shipping_ward: shippingForm.value.ward,
     payment_method: paymentMethod.value,
     // Only product_id and quantity are trusted — the backend always
     // re-derives price/name/total from the product record itself.
     items: cartStore.items.map(item => ({
       product_id: item.product_id,
       quantity: item.quantity,
-    }))
-  }
-  const response = await api.post<any>('/v1/orders', orderData)
+    })),
+  })
   return response.data
 }
 
@@ -269,16 +325,24 @@ async function placeOrder() {
     router.push('/auth/login?redirect=/checkout')
     return
   }
+  if (!/^\d{10}$/.test(shippingForm.value.phone.trim())) {
+    toast.error('Phone number must be exactly 10 digits.')
+    return
+  }
 
   isPlacingOrder.value = true
 
   try {
+    if (selectedAddressId.value === null && saveAddress.value) {
+      // Best effort: failing to save the address must not block the order.
+      api.post('/v1/user/addresses', { ...shippingForm.value, label: 'Home' }).catch(() => {})
+    }
+
     const order = await createOrder()
 
     if (paymentMethod.value === 'cod') {
       cartStore.clearCart()
-      alert('Order placed successfully!')
-      router.push('/account')
+      router.push({ path: '/order-success', query: { order: order.order_number, phone: order.shipping_phone } })
     } else {
       // eSewa/Khalti: hand off to the gateway. The backend performs the
       // actual payment verification on its own callback route once the
@@ -286,7 +350,7 @@ async function placeOrder() {
       await startGatewayPayment(order, paymentMethod.value as 'esewa' | 'khalti')
     }
   } catch (error: any) {
-    alert(error.message || 'Failed to place order. Please try again.')
+    toast.error(error.message || 'Failed to place order. Please try again.')
   } finally {
     isPlacingOrder.value = false
   }
@@ -327,3 +391,12 @@ async function startGatewayPayment(order: any, provider: 'esewa' | 'khalti') {
   form.submit()
 }
 </script>
+
+<style scoped>
+.checkout-label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+.checkout-input {
+  @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent;
+}
+</style>

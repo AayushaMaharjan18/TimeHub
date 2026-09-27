@@ -1,14 +1,14 @@
 <template>
   <header
-    class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-premium"
+    class="fixed top-0 left-0 right-0 z-50 transition-all duration-500 bg-white"
+    :class="isScrolled ? 'shadow-premium-lg bg-white/95 backdrop-blur-md' : 'shadow-premium'"
   >
     <div class="container-premium">
       <div class="flex items-center justify-between h-10 md:h-12">
         <!-- Logo -->
         <NuxtLink to="/" class="flex items-center space-x-2">
           <span class="text-base md:text-lg font-display font-bold tracking-wider">
-            <span class="text-luxury-black">WATCH</span>
-            <span class="text-gold-500">STORE</span>
+            <BrandWordmark :name="footer.brand_name" />
           </span>
         </NuxtLink>
 
@@ -36,9 +36,9 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
-            <span v-if="wishlistStore.count > 0" class="absolute -top-1 -right-1 bg-gold-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+            <ClientOnly><span v-if="wishlistStore.count > 0" class="absolute -top-1 -right-1 bg-gold-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
               {{ wishlistStore.count }}
-            </span>
+            </span></ClientOnly>
           </NuxtLink>
 
           <!-- Cart -->
@@ -46,12 +46,13 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
-            <span v-if="cartStore.totalItems > 0" class="absolute -top-1 -right-1 bg-gold-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+            <ClientOnly><span v-if="cartStore.totalItems > 0" ref="cartBadge" class="absolute -top-1 -right-1 bg-gold-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
               {{ cartStore.totalItems }}
-            </span>
+            </span></ClientOnly>
           </NuxtLink>
 
           <!-- User Menu -->
+          <ClientOnly>
           <template v-if="authStore.isAuthenticated">
             <NuxtLink to="/account" class="p-2 hover:text-gold-500 transition-colors" aria-label="Account">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,8 +61,9 @@
             </NuxtLink>
           </template>
           <template v-else>
-            <NuxtLink to="/auth/login" class="hidden md:inline-flex btn-primary text-sm px-4 py-2">Sign In</NuxtLink>
+            <NuxtLink to="/auth/login" class="hidden md:inline-flex btn-primary text-sm px-4 py-1.5">Sign In</NuxtLink>
           </template>
+          </ClientOnly>
 
           <!-- Mobile Menu Toggle -->
           <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2" aria-label="Menu">
@@ -98,8 +100,9 @@
         <div class="container-premium py-4">
           <div class="relative">
             <input
+              ref="searchInput"
               v-model="searchQuery"
-              type="text"
+              type="search"
               placeholder="Search watches..."
               class="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl focus:border-gold-500 focus:outline-none text-lg"
               @keyup.enter="handleSearch"
@@ -117,7 +120,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, watch, nextTick } from 'vue'
+import { ref, inject, watch, nextTick, onMounted } from 'vue'
+import { useSiteSettings } from '~/composables/useSiteSettings'
 import { useAuthStore } from '~/stores/auth'
 import { useCartStore } from '~/stores/cart'
 import { useWishlistStore } from '~/stores/wishlist'
@@ -127,10 +131,14 @@ const authStore = useAuthStore()
 const cartStore = useCartStore()
 const wishlistStore = useWishlistStore()
 
+const { footer, fetchSettings } = useSiteSettings()
+
 const isScrolled = ref(false)
 const mobileMenuOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
+const cartBadge = ref<HTMLElement | null>(null)
 
 const scrollY = inject('scrollY', ref(0))
 
@@ -138,13 +146,28 @@ watch(scrollY, (y: number) => {
   isScrolled.value = y > 50
 })
 
+// Close menus on navigation.
+const route = useRoute()
+watch(() => route.fullPath, () => {
+  mobileMenuOpen.value = false
+  searchOpen.value = false
+})
+
+// Bounce the cart badge whenever an item is added.
+watch(() => cartStore.totalItems, async (now, before) => {
+  if (now <= before || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  await nextTick()
+  if (!cartBadge.value) return
+  const { animate } = await import('animejs')
+  animate(cartBadge.value, { scale: [1, 1.6, 1], rotate: [0, -12, 0], duration: 700, ease: 'outElastic(1, .5)' })
+})
+
+onMounted(() => fetchSettings())
+
 function toggleSearch() {
   searchOpen.value = !searchOpen.value
   if (searchOpen.value) {
-    nextTick(() => {
-      const input = document.querySelector('input[type="text"]') as HTMLInputElement
-      input?.focus()
-    })
+    nextTick(() => searchInput.value?.focus())
   }
 }
 
@@ -163,6 +186,7 @@ async function handleLogout() {
   } catch {}
   authStore.logout()
   wishlistStore.clear()
+  mobileMenuOpen.value = false
   navigateTo('/')
 }
 </script>

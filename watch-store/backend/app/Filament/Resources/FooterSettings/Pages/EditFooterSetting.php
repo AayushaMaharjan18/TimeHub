@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\FooterSettings\Pages;
 
 use App\Filament\Resources\FooterSettings\FooterSettingResource;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditFooterSetting extends EditRecord
@@ -12,8 +11,7 @@ class EditFooterSetting extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            DeleteAction::make(),
-        ];
+        // No delete: the storefront reads this single settings record on every page.
+        return [];
     }
 }

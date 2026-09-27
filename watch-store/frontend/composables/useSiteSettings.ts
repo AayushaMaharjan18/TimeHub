@@ -23,6 +23,18 @@ export interface SiteFooterData {
   copyright_text: string | null
   payment_methods: { name: string }[]
   whatsapp_number: string | null
+  business_hours: string | null
+  map_embed_url: string | null
+  newsletter_title: string | null
+  newsletter_text: string | null
+  about: {
+    title: string | null
+    content: string | null
+    image: string | null
+    values: { title: string; description?: string }[]
+    stats: { value: string; label: string }[]
+    team: { name: string; role: string; photo: string | null }[]
+  }
 }
 
 const defaultFooter: SiteFooterData = {
@@ -39,27 +51,38 @@ const defaultFooter: SiteFooterData = {
   copyright_text: null,
   payment_methods: [],
   whatsapp_number: null,
+  business_hours: null,
+  map_embed_url: null,
+  newsletter_title: null,
+  newsletter_text: null,
+  about: { title: null, content: null, image: null, values: [], stats: [], team: [] },
 }
 
 // Module-level singleton state so every consumer (footer, product page, account
 // page, …) shares a single fetch and the same reactive data.
 const footer = ref<SiteFooterData>({ ...defaultFooter })
 const loading = ref(false)
+const loaded = ref(false)
 let loadingPromise: Promise<void> | null = null
 
 export const useSiteSettings = () => {
   const config = useRuntimeConfig()
 
-  const fetchSettings = async () => {
+  /** Loads once per page visit; pass force=true to refetch. */
+  const fetchSettings = async (force = false) => {
     if (loadingPromise) {
       return loadingPromise
+    }
+    if (loaded.value && !force) {
+      return
     }
     loading.value = true
     loadingPromise = (async () => {
       try {
         const { get } = useApi()
-        const data = await get<SiteFooterData>('/v1/footer')
-        footer.value = data
+        const data = await get<SiteFooterData>('/v1/settings')
+        footer.value = { ...defaultFooter, ...data }
+        loaded.value = true
       } catch (error) {
         console.error('Failed to load site settings:', error)
       } finally {
@@ -101,6 +124,7 @@ export const useSiteSettings = () => {
   return {
     footer,
     loading,
+    loaded,
     fetchSettings,
     buildWhatsAppLink,
     whatsappNumber,

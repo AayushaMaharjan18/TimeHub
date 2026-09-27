@@ -12,6 +12,9 @@ class FooterSetting extends Model
         'quick_links' => 'array',
         'customer_service_links' => 'array',
         'payment_methods' => 'array',
+        'about_values' => 'array',
+        'about_stats' => 'array',
+        'about_team' => 'array',
         'is_active' => 'boolean',
     ];
 }

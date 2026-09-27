@@ -73,7 +73,7 @@
         <div class="mt-6 text-center">
           <p class="text-gray-600">
             Don't have an account?
-            <NuxtLink to="/auth/register" class="text-gold-500 hover:text-gold-600 font-medium">
+            <NuxtLink :to="{ path: '/auth/register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }" class="text-gold-500 hover:text-gold-600 font-medium">
               Sign up
             </NuxtLink>
           </p>
@@ -95,6 +95,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '~/stores/auth'
 import { useApi } from '~/composables/useApi'
 import type { AuthResponse } from '~/types'
+
+useSeoMeta({ title: 'Sign In', robots: 'noindex' })
 
 const route = useRoute()
 const router = useRouter()
@@ -124,8 +126,7 @@ async function handleLogin() {
     
     authStore.setAuth(response.user, response.token)
     
-    const redirect = route.query.redirect as string || '/'
-    router.push(redirect)
+    router.push(safeRedirect(route.query.redirect))
   } catch (err: any) {
     error.value = err.message || 'Invalid email or password'
   } finally {

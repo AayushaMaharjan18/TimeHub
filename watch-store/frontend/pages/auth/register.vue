@@ -132,7 +132,7 @@
         <div class="mt-6 text-center">
           <p class="text-gray-600">
             Already have an account?
-            <NuxtLink to="/auth/login" class="text-gold-500 hover:text-gold-600 font-medium">
+            <NuxtLink :to="{ path: '/auth/login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }" class="text-gold-500 hover:text-gold-600 font-medium">
               Sign in
             </NuxtLink>
           </p>
@@ -149,14 +149,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '~/stores/auth'
 import { useApi } from '~/composables/useApi'
 import type { AuthResponse } from '~/types'
 
+useSeoMeta({ title: 'Create Account', robots: 'noindex' })
+
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const redirectTo = computed(() => safeRedirect(route.query.redirect))
 const api = useApi()
 
 const showPassword = ref(false)
@@ -203,8 +207,8 @@ async function handleRegister() {
     success.value = 'Account created successfully!'
     
     setTimeout(() => {
-      router.push('/')
-    }, 1500)
+      router.push(redirectTo.value)
+    }, 800)
   } catch (err: any) {
     error.value = err.message || 'Failed to create account'
   } finally {
